@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Coffeehouse POS & Expenses</title>
+    <title>Coffeehouse POS - Bulk Mode</title>
     <style>
         /* --- CSS VARIABLES & RESET --- */
         :root {
@@ -60,15 +60,50 @@
             -webkit-tap-highlight-color: transparent;
         }
         .menu-btn.food-btn { border-left-color: var(--food-color); }
-        
         .menu-btn:active { transform: scale(0.97); background: #f0f0f0; }
         .menu-btn h3 { font-size: 1rem; margin-bottom: 4px; color: #333; }
         .menu-btn span { font-size: 0.9rem; font-weight: bold; color: #666; }
 
+        /* --- QUANTITY MODAL --- */
+        .modal-overlay {
+            display: none; /* Hidden by default */
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center; align-items: center;
+            z-index: 1000;
+        }
+        .modal-card {
+            background: var(--white);
+            padding: 25px;
+            width: 90%;
+            max-width: 350px;
+            border-radius: var(--radius);
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .modal-title { font-size: 1.2rem; color: var(--accent); margin-bottom: 15px; }
+        .modal-input {
+            width: 100%;
+            padding: 15px;
+            font-size: 2rem;
+            text-align: center;
+            border: 2px solid var(--primary);
+            border-radius: var(--radius);
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        .modal-actions { display: flex; gap: 10px; }
+        .btn-modal {
+            flex: 1; padding: 15px; border: none; border-radius: var(--radius);
+            font-weight: bold; cursor: pointer; font-size: 1rem;
+        }
+        .btn-cancel { background: #eee; color: #555; }
+        .btn-confirm { background: var(--success); color: white; }
+
         /* --- EXPENSES SECTION --- */
         .expense-form { background: var(--white); padding: 15px; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 20px; }
         .form-row { display: flex; gap: 10px; margin-bottom: 10px; }
-        input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; }
+        input[type="text"], input[type="number"].exp-input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; }
         
         .expense-actions { display: flex; gap: 10px; }
         .btn-exp { flex: 1; padding: 12px; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; font-size: 0.9rem; }
@@ -126,8 +161,8 @@
     <div class="section-title">💸 Add Daily Expense</div>
     <div class="expense-form">
         <div class="form-row">
-            <input type="text" id="exp-desc" placeholder="Description (e.g. Ice, Sugar, Milk)">
-            <input type="number" id="exp-amt" placeholder="Amount (ETB)" inputmode="numeric">
+            <input type="text" id="exp-desc" placeholder="Desc (e.g. Ice, Sugar)">
+            <input type="number" id="exp-amt" class="exp-input" placeholder="Cost (ETB)" inputmode="numeric">
         </div>
         <div class="expense-actions">
             <button class="btn-exp btn-drink-exp" onclick="addExpense('drink')">+ Drink Cost</button>
@@ -141,7 +176,7 @@
         <table>
             <thead>
                 <tr>
-                    <th>Item Sold</th>
+                    <th>Item</th>
                     <th>Qty</th>
                     <th class="col-right">Total</th>
                 </tr>
@@ -154,7 +189,7 @@
         <table>
             <thead>
                 <tr>
-                    <th>Expense Desc</th>
+                    <th>Expense</th>
                     <th>Type</th>
                     <th class="col-right">Cost</th>
                     <th width="10"></th>
@@ -169,6 +204,17 @@
     </div>
 </div>
 
+<div id="qty-modal" class="modal-overlay">
+    <div class="modal-card">
+        <div class="modal-title">Enter Quantity for <br><b id="modal-item-name">Item</b></div>
+        <input type="number" id="modal-qty" class="modal-input" value="1" min="1" inputmode="numeric">
+        <div class="modal-actions">
+            <button class="btn-modal btn-cancel" onclick="closeModal()">Cancel</button>
+            <button class="btn-modal btn-confirm" onclick="confirmQty()">Add to Sales</button>
+        </div>
+    </div>
+</div>
+
 <script>
     /* ================= CONFIGURATION ================= */
     const MENU = [
@@ -178,11 +224,13 @@
         { id: 'macchiato', name: 'Macchiato', price: 45, type: 'drink' },
         { id: 'milk', name: 'Milk', price: 30, type: 'drink' },
         { id: 'water', name: 'Water', price: 20, type: 'drink' },
+        { id: 'juice', name: 'Juice', price: 50, type: 'drink' },
         // FOODS
         { id: 'cake', name: 'Slice Cake', price: 50, type: 'food' },
         { id: 'donut', name: 'Donut', price: 35, type: 'food' },
         { id: 'tiramisu', name: 'Tiramisu', price: 70, type: 'food' },
-        { id: 'sandwich', name: 'Sandwich', price: 60, type: 'food' }
+        { id: 'sandwich', name: 'Sandwich', price: 60, type: 'food' },
+        { id: 'burger', name: 'Burger', price: 120, type: 'food' }
     ];
 
     /* ================= STATE MANAGEMENT ================= */
@@ -191,44 +239,79 @@
         expenses: []    // [ { id: 123, desc: 'Ice', amount: 50, type: 'drink' } ]
     };
 
+    // Modal State
+    let currentSelectedItemId = null;
+
     function getTodayKey() {
         const now = new Date();
         return `pos_data_${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}`;
     }
 
     function init() {
-        // 1. Date Display
         const options = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' };
         document.getElementById('current-date').innerText = new Date().toLocaleDateString('en-US', options);
 
-        // 2. Render Menu
         const drinkContainer = document.getElementById('drinks-container');
         const foodContainer = document.getElementById('food-container');
         
         MENU.forEach(item => {
             const btn = document.createElement('div');
             btn.className = item.type === 'food' ? 'menu-btn food-btn' : 'menu-btn';
-            btn.onclick = () => recordSale(item.id);
-            btn.innerHTML = `<h3>${item.name}</h3><span>${item.price} ETB</span>`;
             
+            // CHANGED: Click opens modal now
+            btn.onclick = () => openModal(item);
+            
+            btn.innerHTML = `<h3>${item.name}</h3><span>${item.price} ETB</span>`;
             if(item.type === 'drink') drinkContainer.appendChild(btn);
             else foodContainer.appendChild(btn);
         });
 
-        // 3. Load Data
         loadData();
         renderUI();
     }
 
-    /* ================= ACTIONS ================= */
-    function recordSale(id) {
-        if (!appData.sales[id]) appData.sales[id] = 0;
-        appData.sales[id]++;
-        saveData();
-        renderUI();
-        if (navigator.vibrate) navigator.vibrate(40);
+    /* ================= MODAL LOGIC (NEW) ================= */
+    function openModal(item) {
+        currentSelectedItemId = item.id;
+        document.getElementById('modal-item-name').innerText = item.name;
+        
+        const qtyInput = document.getElementById('modal-qty');
+        qtyInput.value = 1; // Reset to 1
+        
+        document.getElementById('qty-modal').style.display = 'flex';
+        qtyInput.focus();
+        qtyInput.select();
     }
 
+    function closeModal() {
+        document.getElementById('qty-modal').style.display = 'none';
+        currentSelectedItemId = null;
+    }
+
+    function confirmQty() {
+        if (!currentSelectedItemId) return;
+
+        const qtyInput = document.getElementById('modal-qty');
+        const qty = parseInt(qtyInput.value);
+
+        if (isNaN(qty) || qty <= 0) {
+            alert("Please enter a valid quantity (1 or more).");
+            return;
+        }
+
+        // Add to Sales
+        if (!appData.sales[currentSelectedItemId]) appData.sales[currentSelectedItemId] = 0;
+        appData.sales[currentSelectedItemId] += qty;
+        
+        saveData();
+        renderUI();
+        closeModal();
+
+        // Vibration feedback
+        if (navigator.vibrate) navigator.vibrate(50);
+    }
+
+    /* ================= ACTIONS ================= */
     function addExpense(type) {
         const descInput = document.getElementById('exp-desc');
         const amtInput = document.getElementById('exp-amt');
@@ -240,17 +323,9 @@
             return;
         }
 
-        appData.expenses.push({
-            id: Date.now(),
-            desc: desc,
-            amount: amount,
-            type: type
-        });
-
-        // Clear inputs
+        appData.expenses.push({ id: Date.now(), desc: desc, amount: amount, type: type });
         descInput.value = '';
         amtInput.value = '';
-        
         saveData();
         renderUI();
     }
@@ -271,12 +346,11 @@
         }
     }
 
-    /* ================= STORAGE ================= */
+    /* ================= STORAGE & RENDER ================= */
     function loadData() {
         const json = localStorage.getItem(getTodayKey());
         if (json) {
             appData = JSON.parse(json);
-            // Ensure structure integrity if upgrading from old version
             if(!appData.sales) appData.sales = {};
             if(!appData.expenses) appData.expenses = [];
         }
@@ -286,18 +360,14 @@
         localStorage.setItem(getTodayKey(), JSON.stringify(appData));
     }
 
-    /* ================= RENDERING ================= */
     function renderUI() {
-        // 1. Calculate Totals
         let totalSales = 0;
         let totalExpenses = 0;
 
-        // Sales Table
         const salesBody = document.getElementById('sales-body');
         salesBody.innerHTML = '';
         let hasSales = false;
 
-        // Sort menu items so they appear in consistent order
         MENU.forEach(item => {
             const qty = appData.sales[item.id] || 0;
             if (qty > 0) {
@@ -307,7 +377,7 @@
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td>${item.name} <small style="color:#888">(${item.type})</small></td>
+                    <td>${item.name}</td>
                     <td><span class="qty-badge">${qty}</span></td>
                     <td class="col-right">${rowTotal}</td>
                 `;
@@ -317,10 +387,8 @@
 
         if(!hasSales) salesBody.innerHTML = `<tr><td colspan="3" class="empty-msg">No sales yet</td></tr>`;
 
-        // Expenses Table
         const expBody = document.getElementById('expense-body');
         expBody.innerHTML = '';
-        
         appData.expenses.forEach(exp => {
             totalExpenses += exp.amount;
             const tr = document.createElement('tr');
@@ -336,14 +404,13 @@
 
         if(appData.expenses.length === 0) expBody.innerHTML = `<tr><td colspan="4" class="empty-msg">No expenses recorded</td></tr>`;
 
-        // Dashboard
         document.getElementById('total-sales').innerText = totalSales.toLocaleString() + ' ETB';
         document.getElementById('total-expenses').innerText = totalExpenses.toLocaleString() + ' ETB';
         document.getElementById('net-cash').innerText = (totalSales - totalExpenses).toLocaleString() + ' ETB';
     }
 
-    // Start
-    init();
+    // Initialize
+    window.addEventListener('DOMContentLoaded', init);
 
 </script>
 </body>
