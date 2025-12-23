@@ -3,13 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Coffeehouse POS - Bulk Mode</title>
+    <title>Coffeehouse POS - Professional Report</title>
     <style>
-        /* --- CSS VARIABLES & RESET --- */
         :root {
-            --primary: #6F4E37; /* Coffee */
-            --primary-dark: #4e3626;
-            --food-color: #d35400; /* Orange for Food */
+            --primary: #6F4E37;
+            --food-color: #d35400;
             --accent: #2c3e50;
             --light: #f8f9fa;
             --white: #ffffff;
@@ -20,398 +18,294 @@
             --radius: 8px;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        body { background-color: var(--light); color: var(--accent); padding-bottom: 100px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+        body { background-color: var(--light); color: var(--accent); padding-bottom: 50px; }
 
-        /* --- LAYOUT UTILS --- */
         .container { max-width: 800px; margin: 0 auto; padding: 15px; }
-        .section-title { font-size: 1.1rem; color: #777; margin: 25px 0 10px 0; border-bottom: 2px solid #ddd; padding-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+        
+        /* --- HEADER & DATE --- */
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: var(--white); padding: 15px; border-radius: var(--radius); box-shadow: var(--shadow); }
+        h1 { color: var(--primary); font-size: 1.2rem; }
+        .date-input-group { text-align: right; }
+        .date-input-group label { display: block; font-size: 0.7rem; font-weight: bold; color: #888; margin-bottom: 3px; }
+        input[type="date"] { border: 1px solid var(--border); padding: 5px; border-radius: 4px; font-weight: bold; color: var(--primary); }
 
-        /* --- HEADER --- */
-        header { text-align: center; margin-bottom: 20px; padding: 10px 0; }
-        h1 { color: var(--primary); font-size: 1.6rem; }
-        #current-date { font-size: 0.9rem; color: #888; font-weight: 500; margin-top: 5px; }
-
-        /* --- DASHBOARD CARDS --- */
+        /* --- DASHBOARD --- */
         .dashboard { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; }
-        .card { background: var(--white); padding: 15px 10px; border-radius: var(--radius); text-align: center; box-shadow: var(--shadow); border: 1px solid var(--border); }
-        .card-label { font-size: 0.75rem; color: #777; text-transform: uppercase; font-weight: bold; }
-        .card-value { font-size: 1.2rem; font-weight: 800; margin-top: 5px; }
-        .card.net { background: var(--accent); color: var(--white); border: none; }
-        .card.net .card-label { color: #ccc; }
-        .text-danger { color: var(--danger); }
-        .text-success { color: var(--success); }
+        .card { background: var(--white); padding: 12px; border-radius: var(--radius); text-align: center; box-shadow: var(--shadow); border: 1px solid var(--border); }
+        .card-label { font-size: 0.7rem; color: #777; text-transform: uppercase; font-weight: bold; }
+        .card-value { font-size: 1.1rem; font-weight: 800; margin-top: 5px; }
+        .card.net { background: var(--accent); color: var(--white); }
 
-        /* --- MENU GRIDS --- */
-        .menu-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        /* --- MENU --- */
+        .section-title { font-size: 0.9rem; color: #777; margin: 20px 0 10px 0; border-bottom: 2px solid #ddd; padding-bottom: 5px; text-transform: uppercase; }
+        .menu-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
         @media (min-width: 600px) { .menu-grid { grid-template-columns: repeat(4, 1fr); } }
 
         .menu-btn {
-            background: var(--white);
-            border: 1px solid var(--border);
-            border-left: 5px solid var(--primary); /* Drink Color */
-            border-radius: var(--radius);
-            padding: 20px 10px;
-            cursor: pointer;
-            text-align: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            transition: all 0.1s;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
+            background: var(--white); border: 1px solid var(--border); border-left: 5px solid var(--primary);
+            border-radius: var(--radius); padding: 15px 10px; cursor: pointer; text-align: center; transition: 0.1s;
         }
         .menu-btn.food-btn { border-left-color: var(--food-color); }
-        .menu-btn:active { transform: scale(0.97); background: #f0f0f0; }
-        .menu-btn h3 { font-size: 1rem; margin-bottom: 4px; color: #333; }
-        .menu-btn span { font-size: 0.9rem; font-weight: bold; color: #666; }
+        .menu-btn:active { transform: scale(0.95); background: #eee; }
+        .menu-btn h3 { font-size: 0.9rem; margin-bottom: 4px; }
+        .menu-btn span { font-size: 0.8rem; font-weight: bold; color: #666; }
 
-        /* --- QUANTITY MODAL --- */
-        .modal-overlay {
-            display: none; /* Hidden by default */
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5);
-            justify-content: center; align-items: center;
-            z-index: 1000;
-        }
-        .modal-card {
-            background: var(--white);
-            padding: 25px;
-            width: 90%;
-            max-width: 350px;
-            border-radius: var(--radius);
-            text-align: center;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-        }
-        .modal-title { font-size: 1.2rem; color: var(--accent); margin-bottom: 15px; }
-        .modal-input {
-            width: 100%;
-            padding: 15px;
-            font-size: 2rem;
-            text-align: center;
-            border: 2px solid var(--primary);
-            border-radius: var(--radius);
-            margin-bottom: 20px;
-            font-weight: bold;
-        }
-        .modal-actions { display: flex; gap: 10px; }
-        .btn-modal {
-            flex: 1; padding: 15px; border: none; border-radius: var(--radius);
-            font-weight: bold; cursor: pointer; font-size: 1rem;
-        }
-        .btn-cancel { background: #eee; color: #555; }
-        .btn-confirm { background: var(--success); color: white; }
-
-        /* --- EXPENSES SECTION --- */
-        .expense-form { background: var(--white); padding: 15px; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 20px; }
-        .form-row { display: flex; gap: 10px; margin-bottom: 10px; }
-        input[type="text"], input[type="number"].exp-input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; }
-        
-        .expense-actions { display: flex; gap: 10px; }
-        .btn-exp { flex: 1; padding: 12px; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; font-size: 0.9rem; }
-        .btn-drink-exp { background-color: var(--primary); }
-        .btn-food-exp { background-color: var(--food-color); }
-
-        /* --- TABLES --- */
-        .table-container { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 15px; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
-        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }
-        th { background: #f1f1f1; font-size: 0.8rem; text-transform: uppercase; color: #555; }
+        /* --- LOGS TABLE --- */
+        .log-section { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); margin-top: 20px; overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th, td { padding: 10px; border-bottom: 1px solid #eee; text-align: left; }
+        th { background: #f4f4f4; color: #666; font-size: 0.75rem; }
         .col-right { text-align: right; }
-        .row-del { color: #aaa; cursor: pointer; font-size: 1.2rem; line-height: 1; }
-        .row-del:hover { color: var(--danger); }
-        .qty-badge { background: #eee; padding: 2px 8px; border-radius: 10px; font-weight: bold; font-size: 0.8rem; }
+        .text-food { color: var(--food-color); font-weight: bold; }
+        .text-drink { color: var(--primary); font-weight: bold; }
 
-        /* --- CONTROLS --- */
-        .controls { text-align: center; margin-top: 40px; opacity: 0.8; }
-        .btn-reset { background: transparent; border: 1px solid var(--danger); color: var(--danger); padding: 8px 20px; border-radius: 4px; cursor: pointer; }
+        /* --- EXPENSE FORM --- */
+        .expense-form { background: #fff; padding: 15px; border-radius: var(--radius); margin-top: 20px; border: 1px dashed #ccc; }
+        .form-row { display: flex; gap: 5px; margin-bottom: 10px; }
+        input[type="text"], input[type="number"] { padding: 8px; border: 1px solid #ccc; border-radius: 4px; flex: 1; }
 
-        .empty-msg { text-align: center; padding: 15px; font-style: italic; color: #aaa; }
+        /* --- MODAL --- */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); justify-content: center; align-items: center; z-index: 100; }
+        .modal-content { background: #fff; padding: 25px; border-radius: 12px; width: 90%; max-width: 320px; text-align: center; }
+        .modal-content input { width: 100%; font-size: 2rem; text-align: center; margin: 15px 0; border: 2px solid var(--primary); }
+        .modal-btns { display: flex; gap: 10px; }
+        .btn { flex: 1; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .btn-ok { background: var(--success); color: #fff; }
+        .btn-cancel { background: #eee; }
+
+        /* --- FOOTER ACTIONS --- */
+        .footer-actions { margin-top: 30px; display: flex; flex-direction: column; gap: 10px; }
+        .btn-payout { background: var(--accent); color: white; padding: 15px; border-radius: var(--radius); border: none; font-weight: bold; cursor: pointer; font-size: 1rem; }
+
+        /* --- PRINT STYLES --- */
+        @media print {
+            .menu-grid, .expense-form, .footer-actions, header, .modal, .section-title { display: none !important; }
+            body { background: white; padding: 0; }
+            .container { max-width: 100%; width: 100%; }
+            .log-section { box-shadow: none; border: 1px solid #000; }
+            .dashboard { border: 1px solid #000; grid-template-columns: 1fr 1fr 1fr; }
+            .print-only-header { display: block !important; text-align: center; margin-bottom: 20px; }
+        }
+        .print-only-header { display: none; }
     </style>
 </head>
 <body>
 
 <div class="container">
+    <div class="print-only-header">
+        <h1>COFFEE HOUSE - DAILY PAYOUT REPORT</h1>
+        <h2 id="print-date"></h2>
+    </div>
+
     <header>
-        <h1>☕ Coffee House POS</h1>
-        <div id="current-date">...</div>
+        <h1>☕ POS System</h1>
+        <div class="date-input-group">
+            <label>Working Date</label>
+            <input type="date" id="work-date" onchange="changeDate()">
+        </div>
     </header>
 
     <div class="dashboard">
-        <div class="card">
-            <div class="card-label">Total Sales</div>
-            <div class="card-value text-success" id="total-sales">0</div>
-        </div>
-        <div class="card">
-            <div class="card-label">Total Expenses</div>
-            <div class="card-value text-danger" id="total-expenses">0</div>
-        </div>
-        <div class="card net">
-            <div class="card-label">Net Cash</div>
-            <div class="card-value" id="net-cash">0</div>
-        </div>
+        <div class="card"><div class="card-label">Sales</div><div class="card-value text-success" id="total-sales">0</div></div>
+        <div class="card"><div class="card-label">Expenses</div><div class="card-value text-danger" id="total-expenses">0</div></div>
+        <div class="card net"><div class="card-label">Net Payout</div><div class="card-value" id="net-cash">0</div></div>
     </div>
 
-    <div class="section-title">🥤 Drinks Menu</div>
-    <div id="drinks-container" class="menu-grid">
-        </div>
+    <div class="section-title">Drinks</div>
+    <div id="drink-menu" class="menu-grid"></div>
 
-    <div class="section-title">🍰 Food Menu</div>
-    <div id="food-container" class="menu-grid">
-        </div>
+    <div class="section-title">Foods</div>
+    <div id="food-menu" class="menu-grid"></div>
 
-    <div class="section-title">💸 Add Daily Expense</div>
+    <div class="section-title">Daily Expense</div>
     <div class="expense-form">
         <div class="form-row">
-            <input type="text" id="exp-desc" placeholder="Desc (e.g. Ice, Sugar)">
-            <input type="number" id="exp-amt" class="exp-input" placeholder="Cost (ETB)" inputmode="numeric">
+            <input type="text" id="exp-name" placeholder="Expense description...">
+            <input type="number" id="exp-price" placeholder="Amount" inputmode="numeric">
         </div>
-        <div class="expense-actions">
-            <button class="btn-exp btn-drink-exp" onclick="addExpense('drink')">+ Drink Cost</button>
-            <button class="btn-exp btn-food-exp" onclick="addExpense('food')">+ Food Cost</button>
+        <div class="modal-btns">
+            <button class="btn" style="background:var(--primary); color:white" onclick="addExp('drink')">Drink Expense</button>
+            <button class="btn" style="background:var(--food-color); color:white" onclick="addExp('food')">Food Expense</button>
         </div>
     </div>
 
-    <div class="section-title">📊 Daily Report</div>
-    
-    <div class="table-container">
+    <div class="section-title">Transaction Log</div>
+    <div class="log-section">
         <table>
             <thead>
                 <tr>
-                    <th>Item</th>
+                    <th>Time</th>
+                    <th>Item / Description</th>
                     <th>Qty</th>
-                    <th class="col-right">Total</th>
+                    <th class="col-right">Amount</th>
                 </tr>
             </thead>
-            <tbody id="sales-body"></tbody>
+            <tbody id="log-body"></tbody>
         </table>
     </div>
 
-    <div class="table-container">
-        <table>
-            <thead>
-                <tr>
-                    <th>Expense</th>
-                    <th>Type</th>
-                    <th class="col-right">Cost</th>
-                    <th width="10"></th>
-                </tr>
-            </thead>
-            <tbody id="expense-body"></tbody>
-        </table>
-    </div>
-
-    <div class="controls">
-        <button class="btn-reset" onclick="resetDay()">Reset Day Data</button>
+    <div class="footer-actions">
+        <button class="btn-payout" onclick="printAndReset()">Finalize Payout & Save PDF</button>
     </div>
 </div>
 
-<div id="qty-modal" class="modal-overlay">
-    <div class="modal-card">
-        <div class="modal-title">Enter Quantity for <br><b id="modal-item-name">Item</b></div>
-        <input type="number" id="modal-qty" class="modal-input" value="1" min="1" inputmode="numeric">
-        <div class="modal-actions">
-            <button class="btn-modal btn-cancel" onclick="closeModal()">Cancel</button>
-            <button class="btn-modal btn-confirm" onclick="confirmQty()">Add to Sales</button>
+<div id="qty-modal" class="modal">
+    <div class="modal-content">
+        <h2 id="modal-title">Quantity</h2>
+        <input type="number" id="qty-val" value="1" inputmode="numeric">
+        <div class="modal-btns">
+            <button class="btn btn-cancel" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-ok" onclick="confirmSale()">Add Sale</button>
         </div>
     </div>
 </div>
 
 <script>
-    /* ================= CONFIGURATION ================= */
     const MENU = [
-        // DRINKS
-        { id: 'coffee', name: 'Coffee', price: 40, type: 'drink' },
-        { id: 'tea', name: 'Tea', price: 25, type: 'drink' },
-        { id: 'macchiato', name: 'Macchiato', price: 45, type: 'drink' },
-        { id: 'milk', name: 'Milk', price: 30, type: 'drink' },
-        { id: 'water', name: 'Water', price: 20, type: 'drink' },
-        { id: 'juice', name: 'Juice', price: 50, type: 'drink' },
-        // FOODS
-        { id: 'cake', name: 'Slice Cake', price: 50, type: 'food' },
-        { id: 'donut', name: 'Donut', price: 35, type: 'food' },
-        { id: 'tiramisu', name: 'Tiramisu', price: 70, type: 'food' },
-        { id: 'sandwich', name: 'Sandwich', price: 60, type: 'food' },
-        { id: 'burger', name: 'Burger', price: 120, type: 'food' }
+        { id: 'c1', name: 'Coffee', price: 40, type: 'drink' },
+        { id: 'c2', name: 'Tea', price: 25, type: 'drink' },
+        { id: 'c3', name: 'Macchiato', price: 45, type: 'drink' },
+        { id: 'c4', name: 'Milk', price: 30, type: 'drink' },
+        { id: 'f1', name: 'Cake', price: 50, type: 'food' },
+        { id: 'f2', name: 'Sandwich', price: 60, type: 'food' },
+        { id: 'f3', name: 'Donut', price: 35, type: 'food' }
     ];
 
-    /* ================= STATE MANAGEMENT ================= */
-    let appData = {
-        sales: {},      // { itemId: quantity }
-        expenses: []    // [ { id: 123, desc: 'Ice', amount: 50, type: 'drink' } ]
+    let currentDayData = { transactions: [] };
+    let activeItem = null;
+
+    // Initialize
+    window.onload = () => {
+        // Set default date to today
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('work-date').value = today;
+        
+        renderMenu();
+        loadDay();
     };
 
-    // Modal State
-    let currentSelectedItemId = null;
-
-    function getTodayKey() {
-        const now = new Date();
-        return `pos_data_${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}`;
-    }
-
-    function init() {
-        const options = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' };
-        document.getElementById('current-date').innerText = new Date().toLocaleDateString('en-US', options);
-
-        const drinkContainer = document.getElementById('drinks-container');
-        const foodContainer = document.getElementById('food-container');
-        
+    function renderMenu() {
+        const dm = document.getElementById('drink-menu');
+        const fm = document.getElementById('food-menu');
         MENU.forEach(item => {
-            const btn = document.createElement('div');
-            btn.className = item.type === 'food' ? 'menu-btn food-btn' : 'menu-btn';
-            
-            // CHANGED: Click opens modal now
-            btn.onclick = () => openModal(item);
-            
-            btn.innerHTML = `<h3>${item.name}</h3><span>${item.price} ETB</span>`;
-            if(item.type === 'drink') drinkContainer.appendChild(btn);
-            else foodContainer.appendChild(btn);
+            const b = document.createElement('div');
+            b.className = `menu-btn ${item.type === 'food' ? 'food-btn' : ''}`;
+            b.innerHTML = `<h3>${item.name}</h3><span>${item.price} ETB</span>`;
+            b.onclick = () => openModal(item);
+            (item.type === 'drink' ? dm : fm).appendChild(b);
         });
-
-        loadData();
-        renderUI();
     }
 
-    /* ================= MODAL LOGIC (NEW) ================= */
     function openModal(item) {
-        currentSelectedItemId = item.id;
-        document.getElementById('modal-item-name').innerText = item.name;
-        
-        const qtyInput = document.getElementById('modal-qty');
-        qtyInput.value = 1; // Reset to 1
-        
+        activeItem = item;
+        document.getElementById('modal-title').innerText = item.name;
+        document.getElementById('qty-val').value = 1;
         document.getElementById('qty-modal').style.display = 'flex';
-        qtyInput.focus();
-        qtyInput.select();
+        document.getElementById('qty-val').select();
     }
 
     function closeModal() {
         document.getElementById('qty-modal').style.display = 'none';
-        currentSelectedItemId = null;
     }
 
-    function confirmQty() {
-        if (!currentSelectedItemId) return;
+    function changeDate() {
+        loadDay();
+    }
 
-        const qtyInput = document.getElementById('modal-qty');
-        const qty = parseInt(qtyInput.value);
+    function confirmSale() {
+        const qty = parseInt(document.getElementById('qty-val').value);
+        if(!qty || qty < 1) return;
 
-        if (isNaN(qty) || qty <= 0) {
-            alert("Please enter a valid quantity (1 or more).");
-            return;
-        }
+        const entry = {
+            time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+            name: activeItem.name,
+            qty: qty,
+            price: activeItem.price * qty,
+            isExpense: false,
+            type: activeItem.type
+        };
 
-        // Add to Sales
-        if (!appData.sales[currentSelectedItemId]) appData.sales[currentSelectedItemId] = 0;
-        appData.sales[currentSelectedItemId] += qty;
-        
-        saveData();
-        renderUI();
+        currentDayData.transactions.push(entry);
+        saveAndRefresh();
         closeModal();
-
-        // Vibration feedback
-        if (navigator.vibrate) navigator.vibrate(50);
     }
 
-    /* ================= ACTIONS ================= */
-    function addExpense(type) {
-        const descInput = document.getElementById('exp-desc');
-        const amtInput = document.getElementById('exp-amt');
-        const desc = descInput.value.trim();
-        const amount = parseFloat(amtInput.value);
+    function addExp(type) {
+        const name = document.getElementById('exp-name').value;
+        const price = parseFloat(document.getElementById('exp-price').value);
+        if(!name || !price) return alert("Fill expense details");
 
-        if (!desc || isNaN(amount) || amount <= 0) {
-            alert("Please enter a valid description and amount.");
-            return;
-        }
+        currentDayData.transactions.push({
+            time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+            name: `EXPENSE: ${name}`,
+            qty: '-',
+            price: -price,
+            isExpense: true,
+            type: type
+        });
+        
+        document.getElementById('exp-name').value = '';
+        document.getElementById('exp-price').value = '';
+        saveAndRefresh();
+    }
 
-        appData.expenses.push({ id: Date.now(), desc: desc, amount: amount, type: type });
-        descInput.value = '';
-        amtInput.value = '';
-        saveData();
+    function saveAndRefresh() {
+        const date = document.getElementById('work-date').value;
+        localStorage.setItem(`pos_${date}`, JSON.stringify(currentDayData));
         renderUI();
     }
 
-    function removeExpense(id) {
-        if(confirm("Delete this expense entry?")) {
-            appData.expenses = appData.expenses.filter(e => e.id !== id);
-            saveData();
-            renderUI();
-        }
-    }
-
-    function resetDay() {
-        if (confirm("⚠️ RESET WARNING\n\nThis will clear all sales and expenses for TODAY.\nAre you sure?")) {
-            appData = { sales: {}, expenses: [] };
-            saveData();
-            renderUI();
-        }
-    }
-
-    /* ================= STORAGE & RENDER ================= */
-    function loadData() {
-        const json = localStorage.getItem(getTodayKey());
-        if (json) {
-            appData = JSON.parse(json);
-            if(!appData.sales) appData.sales = {};
-            if(!appData.expenses) appData.expenses = [];
-        }
-    }
-
-    function saveData() {
-        localStorage.setItem(getTodayKey(), JSON.stringify(appData));
+    function loadDay() {
+        const date = document.getElementById('work-date').value;
+        const saved = localStorage.getItem(`pos_${date}`);
+        currentDayData = saved ? JSON.parse(saved) : { transactions: [] };
+        renderUI();
     }
 
     function renderUI() {
-        let totalSales = 0;
-        let totalExpenses = 0;
+        const body = document.getElementById('log-body');
+        body.innerHTML = '';
+        let sales = 0; let exps = 0;
 
-        const salesBody = document.getElementById('sales-body');
-        salesBody.innerHTML = '';
-        let hasSales = false;
+        // Transactions are rendered as individual rows (Separate sold outs)
+        currentDayData.transactions.forEach((t, index) => {
+            if(!t.isExpense) sales += t.price;
+            else exps += Math.abs(t.price);
 
-        MENU.forEach(item => {
-            const qty = appData.sales[item.id] || 0;
-            if (qty > 0) {
-                hasSales = true;
-                const rowTotal = qty * item.price;
-                totalSales += rowTotal;
-
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${item.name}</td>
-                    <td><span class="qty-badge">${qty}</span></td>
-                    <td class="col-right">${rowTotal}</td>
-                `;
-                salesBody.appendChild(tr);
-            }
-        });
-
-        if(!hasSales) salesBody.innerHTML = `<tr><td colspan="3" class="empty-msg">No sales yet</td></tr>`;
-
-        const expBody = document.getElementById('expense-body');
-        expBody.innerHTML = '';
-        appData.expenses.forEach(exp => {
-            totalExpenses += exp.amount;
             const tr = document.createElement('tr');
-            const typeColor = exp.type === 'food' ? 'var(--food-color)' : 'var(--primary)';
             tr.innerHTML = `
-                <td>${exp.desc}</td>
-                <td><small style="color:${typeColor}; font-weight:bold">${exp.type.toUpperCase()}</small></td>
-                <td class="col-right">-${exp.amount}</td>
-                <td class="col-right"><span class="row-del" onclick="removeExpense(${exp.id})">&times;</span></td>
+                <td>${t.time}</td>
+                <td class="${t.isExpense ? 'text-danger' : (t.type === 'food' ? 'text-food' : 'text-drink')}">${t.name}</td>
+                <td>${t.qty}</td>
+                <td class="col-right">${t.price} ETB</td>
             `;
-            expBody.appendChild(tr);
+            body.prepend(tr); // Newest on top
         });
 
-        if(appData.expenses.length === 0) expBody.innerHTML = `<tr><td colspan="4" class="empty-msg">No expenses recorded</td></tr>`;
-
-        document.getElementById('total-sales').innerText = totalSales.toLocaleString() + ' ETB';
-        document.getElementById('total-expenses').innerText = totalExpenses.toLocaleString() + ' ETB';
-        document.getElementById('net-cash').innerText = (totalSales - totalExpenses).toLocaleString() + ' ETB';
+        document.getElementById('total-sales').innerText = sales + " ETB";
+        document.getElementById('total-expenses').innerText = exps + " ETB";
+        document.getElementById('net-cash').innerText = (sales - exps) + " ETB";
     }
 
-    // Initialize
-    window.addEventListener('DOMContentLoaded', init);
+    function printAndReset() {
+        if(currentDayData.transactions.length === 0) return alert("No data to save.");
 
+        // Set date for print header
+        document.getElementById('print-date').innerText = "Date: " + document.getElementById('work-date').value;
+
+        // Trigger PDF/Print
+        window.print();
+
+        // After printing, offer reset
+        setTimeout(() => {
+            if(confirm("Report saved? Click OK to clear current day data and reset payout to zero.")) {
+                const date = document.getElementById('work-date').value;
+                localStorage.removeItem(`pos_${date}`);
+                loadDay();
+            }
+        }, 1000);
+    }
 </script>
 </body>
 </html>
