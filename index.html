@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Coffee POS - PDF Report</title>
+    <title>Bean & Bloom POS</title>
     <style>
         :root {
             --primary: #6F4E37;
@@ -19,70 +19,59 @@
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
         body { background-color: var(--light); color: var(--accent); padding-bottom: 50px; }
-        .container { max-width: 800px; margin: 0 auto; padding: 15px; }
+        .container { max-width: 900px; margin: 0 auto; padding: 15px; }
         
-        /* --- HEADER --- */
         header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: var(--white); padding: 15px; border-radius: var(--radius); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         h1 { color: var(--primary); font-size: 1.2rem; }
         input[type="date"] { border: 1px solid var(--border); padding: 8px; border-radius: 4px; font-weight: bold; }
 
-        /* --- DASHBOARD --- */
         .dashboard { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 20px; }
         .card { background: var(--white); padding: 12px; border-radius: var(--radius); text-align: center; border: 1px solid var(--border); }
         .card-label { font-size: 0.65rem; color: #777; text-transform: uppercase; font-weight: bold; }
         .card-value { font-size: 1.1rem; font-weight: 800; margin-top: 4px; }
         .card.net { background: var(--accent); color: var(--white); }
 
-        /* --- MENU --- */
-        .section-title { font-size: 0.9rem; color: #777; margin: 20px 0 10px 0; border-bottom: 2px solid #ddd; padding-bottom: 5px; text-transform: uppercase; }
-        .menu-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-        @media (min-width: 600px) { .menu-grid { grid-template-columns: repeat(4, 1fr); } }
+        .section-title { font-size: 0.8rem; color: #555; margin: 20px 0 10px 0; border-bottom: 2px solid #ddd; padding-bottom: 5px; text-transform: uppercase; font-weight: bold; }
+        .menu-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+        @media (min-width: 768px) { .menu-grid { grid-template-columns: repeat(4, 1fr); } }
 
         .menu-btn {
-            background: var(--white); border: 1px solid var(--border); border-left: 5px solid var(--primary);
-            border-radius: var(--radius); padding: 15px 10px; cursor: pointer; text-align: center;
+            background: var(--white); border: 1px solid var(--border); border-left: 4px solid var(--primary);
+            border-radius: var(--radius); padding: 12px 8px; cursor: pointer; text-align: center;
         }
         .menu-btn.food-btn { border-left-color: var(--food-color); }
-        .menu-btn h3 { font-size: 0.9rem; margin-bottom: 4px; }
-        .menu-btn span { font-size: 0.8rem; font-weight: bold; color: #666; }
+        .menu-btn h3 { font-size: 0.85rem; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .menu-btn span { font-size: 0.8rem; font-weight: bold; color: #444; }
 
-        /* --- LOG TABLE --- */
-        .log-section { background: var(--white); border-radius: var(--radius); margin-top: 20px; overflow: hidden; border: 1px solid var(--border); }
-        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-        th, td { padding: 12px 10px; border-bottom: 1px solid #eee; text-align: left; }
+        .log-section { background: var(--white); border-radius: var(--radius); margin-top: 20px; overflow-x: auto; border: 1px solid var(--border); }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; min-width: 400px; }
+        th, td { padding: 10px; border-bottom: 1px solid #eee; text-align: left; }
         th { background: #f4f4f4; color: #666; font-size: 0.7rem; }
         .col-right { text-align: right; }
-        .btn-del { color: var(--danger); font-weight: bold; cursor: pointer; padding: 5px; border: 1px solid #eee; border-radius: 4px; font-size: 0.7rem; }
+        .btn-del { color: var(--danger); font-weight: bold; cursor: pointer; text-align: center; width: 40px; }
 
-        /* --- EXPENSE --- */
         .expense-form { background: #fff; padding: 15px; border-radius: var(--radius); margin-top: 20px; border: 1px dashed #ccc; }
         .form-row { display: flex; gap: 5px; margin-bottom: 10px; }
         input[type="text"], input[type="number"] { padding: 10px; border: 1px solid #ccc; border-radius: 4px; flex: 1; font-size: 1rem; }
 
-        /* --- MODAL --- */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 1000; }
-        .modal-content { background: #fff; padding: 25px; border-radius: 12px; width: 85%; max-width: 300px; text-align: center; }
+        .modal-content { background: #fff; padding: 20px; border-radius: 12px; width: 85%; max-width: 300px; text-align: center; }
         .modal-content input { width: 100%; font-size: 2rem; text-align: center; margin: 15px 0; border: 2px solid var(--primary); padding: 10px; }
         .modal-btns { display: flex; gap: 10px; }
         .btn { flex: 1; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 1rem; }
         .btn-ok { background: var(--success); color: #fff; }
         .btn-cancel { background: #eee; color: #333; }
 
-        /* --- FOOTER --- */
         .footer-actions { margin-top: 30px; }
         .btn-payout { width: 100%; background: var(--accent); color: white; padding: 18px; border-radius: var(--radius); border: none; font-weight: bold; font-size: 1.1rem; }
 
-        /* --- PRINTING LOGIC --- */
         .print-header { display: none; text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
         
         @media print {
-            body { background: white; }
-            .container { max-width: 100%; padding: 0; }
             header, .menu-grid, .expense-form, .footer-actions, .modal, .btn-del, .section-title { display: none !important; }
             .print-header { display: block; }
             .log-section { border: none; }
-            th { background: #eee !important; -webkit-print-color-adjust: exact; }
-            .dashboard { border: 1px solid #ddd; margin-bottom: 30px; }
+            th { background: #eee !important; }
         }
     </style>
 </head>
@@ -90,49 +79,57 @@
 
 <div class="container">
     <div class="print-header">
-        <h1 style="font-size: 24px;">COFFEE HOUSE DAILY REPORT</h1>
-        <p id="pdf-date-label" style="font-weight: bold; margin-top: 10px;"></p>
+        <h1>BEAN & BLOOM COFFEEHOUSE</h1>
+        <p id="pdf-date-label"></p>
     </div>
 
     <header>
-        <h1>☕ Coffee POS</h1>
+        <h1>☕ Bean & Bloom</h1>
         <input type="date" id="work-date" onchange="loadDay()">
     </header>
 
     <div class="dashboard">
-        <div class="card"><div class="card-label">Total Sales</div><div class="card-value" style="color:var(--success)" id="total-sales">0</div></div>
+        <div class="card"><div class="card-label">Sales</div><div class="card-value" style="color:var(--success)" id="total-sales">0</div></div>
         <div class="card"><div class="card-label">Expenses</div><div class="card-value" style="color:var(--danger)" id="total-expenses">0</div></div>
-        <div class="card net"><div class="card-label">Net Payout</div><div class="card-value" id="net-cash">0</div></div>
+        <div class="card net"><div class="card-label">Net</div><div class="card-value" id="net-cash">0</div></div>
     </div>
 
-    <div class="section-title">Drinks Menu</div>
-    <div id="drink-menu" class="menu-grid"></div>
+    <div class="section-title">Hot Drinks</div>
+    <div id="hot-drinks" class="menu-grid"></div>
 
-    <div class="section-title">Food Menu</div>
-    <div id="food-menu" class="menu-grid"></div>
+    <div class="section-title">Cold Drinks</div>
+    <div id="cold-drinks" class="menu-grid"></div>
 
-    <div class="section-title">Record Expense</div>
+    <div class="section-title">Special Juices</div>
+    <div id="special-juices" class="menu-grid"></div>
+
+    <div class="section-title">Fasting Foods</div>
+    <div id="fasting-food" class="menu-grid"></div>
+
+    <div class="section-title">Non-Fasting Foods</div>
+    <div id="non-fasting-food" class="menu-grid"></div>
+
+    <div class="section-title">Expenses</div>
     <div class="expense-form">
         <div class="form-row">
-            <input type="text" id="exp-name" placeholder="Item (e.g. Sugar)">
-            <input type="number" id="exp-price" placeholder="Cost" inputmode="numeric">
+            <input type="text" id="exp-name" placeholder="Expense...">
+            <input type="number" id="exp-price" placeholder="ETB" inputmode="numeric">
         </div>
         <div class="modal-btns">
-            <button class="btn" style="background:var(--primary); color:white" onclick="addExp('drink')">Drink Exp</button>
-            <button class="btn" style="background:var(--food-color); color:white" onclick="addExp('food')">Food Exp</button>
+            <button class="btn" style="background:var(--primary); color:white" onclick="addExp('drink')">Drink Cost</button>
+            <button class="btn" style="background:var(--food-color); color:white" onclick="addExp('food')">Food Cost</button>
         </div>
     </div>
 
-    <div class="section-title">Daily Transaction Log</div>
     <div class="log-section">
         <table>
             <thead>
                 <tr>
                     <th>Time</th>
-                    <th>Description</th>
+                    <th>Item</th>
                     <th>Qty</th>
-                    <th>Price</th>
-                    <th class="btn-del"></th>
+                    <th>ETB</th>
+                    <th class="btn-del">X</th>
                 </tr>
             </thead>
             <tbody id="log-body"></tbody>
@@ -140,16 +137,13 @@
     </div>
 
     <div class="footer-actions">
-        <button class="btn-payout" onclick="printReport()">Finalize & Save PDF</button>
-        <p style="font-size: 0.7rem; color: #888; text-align: center; margin-top: 10px;">
-            Note: On mobile, select "Save as PDF" in the printer options.
-        </p>
+        <button class="btn-payout" onclick="printReport()">Print Daily Payout</button>
     </div>
 </div>
 
 <div id="qty-modal" class="modal">
     <div class="modal-content">
-        <h3 id="modal-item-name">Item Name</h3>
+        <h3 id="modal-item-name">Item</h3>
         <input type="number" id="qty-input" value="1" inputmode="numeric">
         <div class="modal-btns">
             <button class="btn btn-cancel" onclick="closeModal()">Cancel</button>
@@ -160,13 +154,62 @@
 
 <script>
     const MENU = [
-        { id: 'd1', name: 'Coffee', price: 40, type: 'drink' },
-        { id: 'd2', name: 'Tea', price: 25, type: 'drink' },
-        { id: 'd3', name: 'Macchiato', price: 45, type: 'drink' },
-        { id: 'd4', name: 'Milk', price: 30, type: 'drink' },
-        { id: 'f1', name: 'Cake', price: 50, type: 'food' },
-        { id: 'f2', name: 'Burger', price: 120, type: 'food' },
-        { id: 'f3', name: 'Donut', price: 35, type: 'food' }
+        // HOT DRINKS
+        { name: 'የተለየ ቡና (Special)', price: 40, type: 'drink', cat: 'hot' },
+        { name: 'የጅቦና ቡና', price: 40, type: 'drink', cat: 'hot' },
+        { name: 'ሻይ', price: 25, type: 'drink', cat: 'hot' },
+        { name: 'ወተት', price: 70, type: 'drink', cat: 'hot' },
+        { name: 'ማኪያቶ', price: 60, type: 'drink', cat: 'hot' },
+        { name: 'ቁንዶ', price: 50, type: 'drink', cat: 'hot' },
+        { name: 'ለሚን ሻይ', price: 50, type: 'drink', cat: 'hot' },
+        { name: 'ስፓሪስ', price: 50, type: 'drink', cat: 'hot' },
+        // COLD DRINKS
+        { name: 'ለስላሳ', price: 50, type: 'drink', cat: 'cold' },
+        { name: 'ውሃ 2 ሊትር', price: 40, type: 'drink', cat: 'cold' },
+        { name: 'ውሃ 1 ሊትር', price: 35, type: 'drink', cat: 'cold' },
+        { name: 'ውሃ ግማሽ ሊትር', price: 25, type: 'drink', cat: 'cold' },
+        // SPECIAL JUICES
+        { name: 'አቮካዶ ጁስ', price: 120, type: 'drink', cat: 'special' },
+        { name: 'ማንጎ ጁስ', price: 120, type: 'drink', cat: 'special' },
+        { name: 'ፓፓያ ጁስ', price: 120, type: 'drink', cat: 'special' },
+        { name: 'ሙዝ ጁስ', price: 120, type: 'drink', cat: 'special' },
+        { name: 'ወተት በአቮካዶ', price: 200, type: 'drink', cat: 'special' },
+        { name: 'ስትሮቤሪ', price: 150, type: 'drink', cat: 'special' },
+        { name: 'አናናስ', price: 120, type: 'drink', cat: 'special' },
+        { name: 'ተለካ ጁስ', price: 120, type: 'drink', cat: 'special' },
+        { name: 'በሪ ጁስ', price: 120, type: 'drink', cat: 'special' },
+        { name: 'ስፔሻል ጁስ', price: 250, type: 'drink', cat: 'special' },
+        // FASTING FOOD (የፆም ምግቦች)
+        { name: 'ፓስታ በሶስ', price: 130, type: 'food', cat: 'fasting' },
+        { name: 'ሽሮ', price: 120, type: 'food', cat: 'fasting' },
+        { name: 'ተጋቢኖ', price: 130, type: 'food', cat: 'fasting' },
+        { name: 'ሽሮ በሰለጤ', price: 180, type: 'food', cat: 'fasting' },
+        { name: 'ፍርፍር', price: 100, type: 'food', cat: 'fasting' },
+        { name: 'ሃይ ሃይ', price: 150, type: 'food', cat: 'fasting' },
+        { name: 'ፋሰል ምርጫ', price: 90, type: 'food', cat: 'fasting' },
+        { name: 'ፋሰል በእንቁላል', price: 120, type: 'food', cat: 'fasting' },
+        { name: 'ቲማቲም ለብለብ', price: 100, type: 'food', cat: 'fasting' },
+        { name: 'ቲማቲም ሰላጣ', price: 100, type: 'food', cat: 'fasting' },
+        { name: 'በያይነት', price: 140, type: 'food', cat: 'fasting' },
+        { name: 'ፎርማጆ', price: 160, type: 'food', cat: 'fasting' },
+        { name: 'አጂካ', price: 160, type: 'food', cat: 'fasting' },
+        { name: 'ቺብስ', price: 80, type: 'food', cat: 'fasting' },
+        { name: 'አሮስቶ', price: 90, type: 'food', cat: 'fasting' },
+        { name: 'አሮስቶ ከቺብስ', price: 120, type: 'food', cat: 'fasting' },
+        { name: 'ፓስታ በአትክልት', price: 140, type: 'food', cat: 'fasting' },
+        { name: 'ሩዝ በአትክልት', price: 140, type: 'food', cat: 'fasting' },
+        // NON-FASTING FOOD (የፍስክ ምግቦች)
+        { name: 'ጥብስ', price: 270, type: 'food', cat: 'nonfast' },
+        { name: 'ስጋ ፍርፍር', price: 250, type: 'food', cat: 'nonfast' },
+        { name: 'ፓስታ በስጋ', price: 250, type: 'food', cat: 'nonfast' },
+        { name: 'ፓስታ በ እንቁላል', price: 200, type: 'food', cat: 'nonfast' },
+        { name: 'እንቁላል ሳንድዊች', price: 120, type: 'food', cat: 'nonfast' },
+        { name: 'ጥብስ ፍርፍር', price: 300, type: 'food', cat: 'nonfast' },
+        { name: 'እንቁላል በስጋ', price: 250, type: 'food', cat: 'nonfast' },
+        { name: 'እንቁላል ፍርፍር', price: 140, type: 'food', cat: 'nonfast' },
+        { name: 'ቋንጣ ፍርፍር', price: 300, type: 'food', cat: 'nonfast' },
+        { name: 'ፋሰል በቅቤ', price: 140, type: 'food', cat: 'nonfast' },
+        { name: 'ሽሮ በቅቤ', price: 180, type: 'food', cat: 'nonfast' }
     ];
 
     let currentDayData = { transactions: [] };
@@ -180,14 +223,24 @@
     };
 
     function renderMenu() {
-        const dm = document.getElementById('drink-menu');
-        const fm = document.getElementById('food-menu');
+        const containers = {
+            'hot': document.getElementById('hot-drinks'),
+            'cold': document.getElementById('cold-drinks'),
+            'special': document.getElementById('special-juices'),
+            'fasting': document.getElementById('fasting-food'),
+            'nonfast': document.getElementById('non-fasting-food')
+        };
         MENU.forEach(item => {
             const b = document.createElement('div');
             b.className = `menu-btn ${item.type === 'food' ? 'food-btn' : ''}`;
-            b.innerHTML = `<h3>${item.name}</h3><span>${item.price} ETB</span>`;
-            b.onclick = () => { selectedItem = item; document.getElementById('modal-item-name').innerText = item.name; document.getElementById('qty-input').value = 1; document.getElementById('qty-modal').style.display='flex'; };
-            (item.type === 'drink' ? dm : fm).appendChild(b);
+            b.innerHTML = `<h3>${item.name}</h3><span>${item.price}</span>`;
+            b.onclick = () => { 
+                selectedItem = item; 
+                document.getElementById('modal-item-name').innerText = item.name; 
+                document.getElementById('qty-input').value = 1; 
+                document.getElementById('qty-modal').style.display='flex'; 
+            };
+            containers[item.cat].appendChild(b);
         });
     }
 
@@ -203,7 +256,7 @@
     function addExp(type) {
         const name = document.getElementById('exp-name').value;
         const price = document.getElementById('exp-price').value;
-        if(!name || !price) return alert("Enter expense name and price");
+        if(!name || !price) return;
         addEntry(`EXP: ${name}`, '-', -parseFloat(price), true, type);
         document.getElementById('exp-name').value = ''; document.getElementById('exp-price').value = '';
     }
@@ -218,20 +271,18 @@
     }
 
     function deleteEntry(id) {
-        if(!confirm("Remove this entry?")) return;
+        if(!confirm("Remove entry?")) return;
         currentDayData.transactions = currentDayData.transactions.filter(t => t.id !== id);
         saveAndRender();
     }
 
     function saveAndRender() {
-        const date = document.getElementById('work-date').value;
-        localStorage.setItem(`pos_${date}`, JSON.stringify(currentDayData));
+        localStorage.setItem(`pos_${document.getElementById('work-date').value}`, JSON.stringify(currentDayData));
         renderUI();
     }
 
     function loadDay() {
-        const date = document.getElementById('work-date').value;
-        const saved = localStorage.getItem(`pos_${date}`);
+        const saved = localStorage.getItem(`pos_${document.getElementById('work-date').value}`);
         currentDayData = saved ? JSON.parse(saved) : { transactions: [] };
         renderUI();
     }
@@ -239,7 +290,7 @@
     function renderUI() {
         const body = document.getElementById('log-body');
         body.innerHTML = '';
-        let sales = 0; let exps = 0;
+        let sales = 0, exps = 0;
 
         currentDayData.transactions.forEach(t => {
             if(!t.isExpense) sales += t.price; else exps += Math.abs(t.price);
@@ -249,26 +300,22 @@
                 <td style="color:${t.isExpense ? 'red' : (t.type=='food' ? 'var(--food-color)' : 'var(--primary)')}">${t.name}</td>
                 <td>${t.qty}</td>
                 <td>${t.price}</td>
-                <td class="btn-del" onclick="deleteEntry(${t.id})">DEL</td>
+                <td class="btn-del" onclick="deleteEntry(${t.id})">X</td>
             `;
             body.prepend(tr);
         });
 
-        document.getElementById('total-sales').innerText = sales + " ETB";
-        document.getElementById('total-expenses').innerText = exps + " ETB";
-        document.getElementById('net-cash').innerText = (sales - exps) + " ETB";
+        document.getElementById('total-sales').innerText = sales;
+        document.getElementById('total-expenses').innerText = exps;
+        document.getElementById('net-cash').innerText = (sales - exps);
     }
 
     function printReport() {
-        if(currentDayData.transactions.length === 0) return alert("No transactions to report.");
-        document.getElementById('pdf-date-label').innerText = "Working Date: " + document.getElementById('work-date').value;
-        
+        document.getElementById('pdf-date-label').innerText = "Date: " + document.getElementById('work-date').value;
         window.print();
-
         setTimeout(() => {
-            if(confirm("Report exported? Click OK to reset the data for this day, or Cancel to keep it.")) {
-                const date = document.getElementById('work-date').value;
-                localStorage.removeItem(`pos_${date}`);
+            if(confirm("Report saved? Clear day?")) {
+                localStorage.removeItem(`pos_${document.getElementById('work-date').value}`);
                 loadDay();
             }
         }, 1500);
