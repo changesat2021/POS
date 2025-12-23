@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Coffeehouse Mini POS</title>
+    <style>
+        /* --- CSS VARIABLES & RESET --- */
+        :root {
+            --primary: #6F4E37; /* Coffee Brown */
+            --secondary: #D2B48C; /* Tan */
+            --accent: #2c3e50; /* Dark Blue/Grey */
+            --success: #27ae60;
+            --danger: #c0392b;
+            --light: #f4f4f4;
+            --white: #ffffff;
+            --shadow: 0 4px 6px rgba(0,0,0,0.1);
+            --radius: 8px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        
+        body { background-color: var(--light); color: var(--accent); padding-bottom: 80px; }
+
+        /* --- LAYOUT UTILS --- */
+        .container { max-width: 600px; margin: 0 auto; padding: 15px; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; }
+
+        /* --- HEADER & DATE --- */
+        header { text-align: center; margin-bottom: 20px; }
+        h1 { font-size: 1.5rem; color: var(--primary); }
+        #current-date { font-size: 0.9rem; color: #666; margin-top: 5px; font-weight: 500; }
+
+        /* --- TOTAL DISPLAY --- */
+        .total-card {
+            background: var(--primary);
+            color: var(--white);
+            padding: 20px;
+            border-radius: var(--radius);
+            text-align: center;
+            box-shadow: var(--shadow);
+            margin-bottom: 25px;
+        }
+        .total-label { font-size: 0.9rem; opacity: 0.9; text-transform: uppercase; letter-spacing: 1px; }
+        .total-amount { font-size: 2.5rem; font-weight: 700; margin-top: 5px; }
+
+        /* --- MENU GRID --- */
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr); /* 2 columns for mobile */
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .menu-btn {
+            background: var(--white);
+            border: 2px solid var(--secondary);
+            border-radius: var(--radius);
+            padding: 20px 10px;
+            cursor: pointer;
+            transition: transform 0.1s, background 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            user-select: none; /* Prevent text selection on rapid tapping */
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .menu-btn:active { transform: scale(0.96); background-color: var(--secondary); }
+        .menu-btn h3 { font-size: 1.1rem; margin-bottom: 5px; color: var(--primary); }
+        .menu-btn span { font-size: 0.9rem; color: #666; font-weight: bold; }
+
+        /* --- SALES TABLE --- */
+        .summary-section { background: var(--white); padding: 15px; border-radius: var(--radius); box-shadow: var(--shadow); }
+        .summary-header { font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid var(--light); padding-bottom: 10px; }
+        
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; color: #888; font-size: 0.8rem; padding-bottom: 10px; }
+        td { padding: 8px 0; border-bottom: 1px solid #eee; font-size: 1rem; }
+        .col-right { text-align: right; }
+        .qty-badge { background: var(--secondary); color: var(--primary); padding: 2px 8px; border-radius: 12px; font-size: 0.85rem; font-weight: bold; }
+
+        /* --- CONTROLS --- */
+        .controls { margin-top: 30px; text-align: center; }
+        .btn-reset {
+            background: transparent;
+            border: 1px solid var(--danger);
+            color: var(--danger);
+            padding: 10px 20px;
+            border-radius: var(--radius);
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+        .btn-reset:hover { background: var(--danger); color: var(--white); }
+
+        /* --- HELPER --- */
+        .empty-state { text-align: center; color: #aaa; padding: 10px; font-style: italic; }
+
+        /* --- TABLET/DESKTOP TWEAKS --- */
+        @media (min-width: 768px) {
+            .menu-grid { grid-template-columns: repeat(4, 1fr); }
+            .container { max-width: 800px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>☕ Coffee House POS</h1>
+        <div id="current-date">Loading date...</div>
+    </header>
+
+    <div class="total-card">
+        <div class="total-label">Total Daily Payout</div>
+        <div class="total-amount" id="grand-total">0 ETB</div>
+    </div>
+
+    <div id="menu-container" class="menu-grid">
+        </div>
+
+    <div class="summary-section">
+        <div class="summary-header">Sales Breakdown</div>
+        <table id="sales-table">
+            <thead>
+                <tr>
+                    <th width="40%">Item</th>
+                    <th width="30%">Qty</th>
+                    <th width="30%" class="col-right">Total</th>
+                </tr>
+            </thead>
+            <tbody id="sales-body">
+                </tbody>
+        </table>
+    </div>
+
+    <div class="controls">
+        <button class="btn-reset" onclick="resetDay()">Reset Day</button>
+    </div>
+</div>
+
+<script>
+    /* ========================================
+     CONFIGURATION (EDIT MENU HERE)
+     ========================================
+    */
+    const MENU_ITEMS = [
+        { id: 'coffee', name: 'Coffee', price: 40 },
+        { id: 'tea', name: 'Tea', price: 25 },
+        { id: 'macchiato', name: 'Macchiato', price: 45 },
+        { id: 'milk', name: 'Milk', price: 30 },
+        { id: 'special', name: 'Special', price: 60 }, // Added example
+        { id: 'water', name: 'Water', price: 15 }      // Added example
+    ];
+
+    /* ========================================
+     APP LOGIC
+     ========================================
+    */
+
+    // State
+    let dailySales = {}; 
+    const currency = " ETB";
+
+    // 1. Get Current Date Key (YYYY-MM-DD) for LocalStorage
+    function getTodayKey() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        return `pos_sales_${year}-${month}-${day}`;
+    }
+
+    function formatDisplayDate() {
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('current-date').innerText = new Date().toLocaleDateString('en-US', options);
+    }
+
+    // 2. Initialize App
+    function init() {
+        formatDisplayDate();
+        renderMenuButtons();
+        loadData();
+        renderSummary();
+    }
+
+    // 3. Render Menu Buttons
+    function renderMenuButtons() {
+        const container = document.getElementById('menu-container');
+        container.innerHTML = ''; // Clear existing
+
+        MENU_ITEMS.forEach(item => {
+            const btn = document.createElement('div');
+            btn.className = 'menu-btn';
+            btn.onclick = () => recordSale(item.id);
+            btn.innerHTML = `
+                <h3>${item.name}</h3>
+                <span>${item.price}${currency}</span>
+            `;
+            container.appendChild(btn);
+        });
+    }
+
+    // 4. Handle Sales Logic
+    function recordSale(itemId) {
+        if (!dailySales[itemId]) {
+            dailySales[itemId] = 0;
+        }
+        dailySales[itemId]++;
+        
+        saveData();
+        renderSummary();
+        
+        // Optional: Vibration feedback for mobile feel
+        if (navigator.vibrate) navigator.vibrate(50);
+    }
+
+    // 5. Render Tables & Totals
+    function renderSummary() {
+        const tbody = document.getElementById('sales-body');
+        const totalEl = document.getElementById('grand-total');
+        tbody.innerHTML = '';
+
+        let grandTotal = 0;
+        let hasSales = false;
+
+        MENU_ITEMS.forEach(item => {
+            const count = dailySales[item.id] || 0;
+            if (count > 0) {
+                hasSales = true;
+                const itemTotal = count * item.price;
+                grandTotal += itemTotal;
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.name}</td>
+                    <td><span class="qty-badge">${count}</span></td>
+                    <td class="col-right">${itemTotal}${currency}</td>
+                `;
+                tbody.appendChild(row);
+            }
+        });
+
+        if (!hasSales) {
+            tbody.innerHTML = '<tr><td colspan="3" class="empty-state">No sales yet today.</td></tr>';
+        }
+
+        totalEl.innerText = grandTotal.toLocaleString() + currency;
+    }
+
+    // 6. Data Persistence (LocalStorage)
+    function loadData() {
+        const key = getTodayKey();
+        const stored = localStorage.getItem(key);
+        
+        if (stored) {
+            dailySales = JSON.parse(stored);
+        } else {
+            // New day or first run
+            dailySales = {};
+        }
+    }
+
+    function saveData() {
+        const key = getTodayKey();
+        localStorage.setItem(key, JSON.stringify(dailySales));
+    }
+
+    // 7. Reset Logic
+    function resetDay() {
+        if (confirm("Are you sure you want to reset ONLY today's sales to zero?")) {
+            dailySales = {};
+            saveData(); // Overwrite today's key with empty object
+            renderSummary();
+        }
+    }
+
+    // Boot the app
+    window.addEventListener('DOMContentLoaded', init);
+
+</script>
+</body>
+</html>
