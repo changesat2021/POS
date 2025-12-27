@@ -39,8 +39,9 @@
             .card { border: none; }
         }
 
-        .admin-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #ddd; display: flex; justify-content: space-around; }
+        .admin-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #ddd; display: flex; justify-content: space-around; z-index: 90; }
         .btn-payout { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+        .btn-inv { background: var(--primary); color: white; border: none; padding: 12px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; text-decoration:none; display:none; }
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; z-index: 100; }
     </style>
 </head>
@@ -92,6 +93,7 @@
 
     <div class="admin-nav no-print">
         <button id="auth-btn" onclick="handleAuth()" style="background:none; border:none; text-decoration:underline;">Admin Login</button>
+        <a id="inv-btn" href="inventory.html" class="btn-inv">📦 Inventory</a>
         <button id="print-btn" class="btn-payout" onclick="initiatePrint()" style="display:none;">Save PDF & Finalize</button>
     </div>
 </div>
@@ -129,6 +131,16 @@
         { n: 'ዳቦ', p: 15, c: 'add' }, { n: 'ግማሽ እንጀራ', p: 20, c: 'add' }, { n: 'እንጀራ', p: 35, c: 'add' }, { n: 'አምባሻ', p: 30, c: 'add' }, { n: 'ሳምቡሳ', p: 25, c: 'add' }, { n: 'ብስኩት', p: 25, c: 'add' }, { n: 'ቴካዌ ከፕ', p: 15, c: 'add' }
     ];
 
+    // --- INVENTORY CONFIGURATION ---
+    // Keys MUST match the ID you create in inventory.html
+    const RECIPES = {
+        'ቡና': { 'coffee_powder': 0.02, 'sugar_kg': 0.01 }, 
+        'ማኪያቶ': { 'milk_liter': 0.25, 'coffee_powder': 0.02 },
+        'ሻይ': { 'tea_leaves': 0.01, 'sugar_kg': 0.01 },
+        'አቮካዶ ጁስ': { 'avocado_kg': 0.3, 'sugar_kg': 0.02 }
+        // Add more recipes here...
+    };
+
     let sel = null, isAdmin = false;
 
     window.onload = () => {
@@ -138,7 +150,9 @@
         auth.onAuthStateChanged(user => {
             isAdmin = (user && user.uid === adminUID);
             document.getElementById('auth-btn').innerText = isAdmin ? "Logout Admin" : "Admin Login";
+            // Show/Hide Admin Buttons
             document.getElementById('print-btn').style.display = isAdmin ? 'block' : 'none';
+            document.getElementById('inv-btn').style.display = isAdmin ? 'block' : 'none';
             sync();
         });
     };
@@ -156,8 +170,38 @@
     async function confirmSale() {
         const q = parseInt(document.getElementById('m-qty').value);
         if(!q) return;
-        await db.collection('transactions').add({ n: sel.n, q: q, p: sel.p * q, d: document.getElementById('work-date').value, ex: false, ts: Date.now() });
-        closeModal();
+
+        // Use batch to ensure Inventory and Sales happen together
+        const batch = db.batch();
+        
+        // 1. Prepare Transaction Record
+        const newTransRef = db.collection('transactions').doc();
+        batch.set(newTransRef, { 
+            n: sel.n, 
+            q: q, 
+            p: sel.p * q, 
+            d: document.getElementById('work-date').value, 
+            ex: false, 
+            ts: Date.now() 
+        });
+
+        // 2. Prepare Inventory Deduction
+        if (RECIPES[sel.n]) {
+            const ingredients = RECIPES[sel.n];
+            for (let matId in ingredients) {
+                const amountToDeduct = ingredients[matId] * q; 
+                const ref = db.collection('inventory').doc(matId);
+                // "increment" with negative number = subtract
+                batch.update(ref, { qty: firebase.firestore.FieldValue.increment(-amountToDeduct) });
+            }
+        }
+
+        try {
+            await batch.commit();
+            closeModal();
+        } catch (error) {
+            alert("Error: " + error.message);
+        }
     }
 
     async function saveEx() {
@@ -174,12 +218,13 @@
             snap.forEach(doc => {
                 const t = doc.data();
                 if(t.ex) e += t.p; else s += t.p;
-                if(!sum[t.n]) sum[t.n] = { q: 0, p: 0, isEx: t.ex, id: doc.id };
+                if(!sum[t.n]) sum[t.n] = { q: 0, p: 0, isEx: t.ex, id: doc.id, name: t.n }; // name needed for refund logic
                 sum[t.n].q += t.q; sum[t.n].p += t.p;
             });
             for (let name in sum) {
                 const item = sum[name];
-                html += `<tr><td style="color:${item.isEx?'red':'black'}">${name}</td><td>${item.q}</td><td>${item.p}</td><td class="no-print">${isAdmin ? `<button onclick="delDoc('${item.id}')" style="color:red;border:none;background:none;font-weight:bold;">X</button>` : ''}</td></tr>`;
+                // Pass quantity (item.q) to delDoc so we know how much to refund
+                html += `<tr><td style="color:${item.isEx?'red':'black'}">${name}</td><td>${item.q}</td><td>${item.p}</td><td class="no-print">${isAdmin ? `<button onclick="delDoc('${item.id}', '${name}', ${item.q})" style="color:red;border:none;background:none;font-weight:bold;">X</button>` : ''}</td></tr>`;
             }
             document.getElementById('log-body').innerHTML = html;
             document.getElementById('total-s').innerText = s;
@@ -204,7 +249,29 @@
         alert("System Brushed. Ready for next day.");
     }
 
-    async function delDoc(id) { if(confirm("Admin: Delete?")) await db.collection('transactions').doc(id).delete(); }
+    // Updated delDoc to Refund Inventory if a sale is deleted
+    async function delDoc(id, name, qty) { 
+        if(!confirm("Admin: Delete this record? \n(Inventory will be refunded)")) return;
+
+        const batch = db.batch();
+        const docRef = db.collection('transactions').doc(id);
+        
+        // 1. Delete Transaction
+        batch.delete(docRef);
+
+        // 2. Refund Inventory (Add ingredients back)
+        if (RECIPES[name]) {
+            const ingredients = RECIPES[name];
+            for (let matId in ingredients) {
+                const amountToRefund = ingredients[matId] * qty; 
+                const matRef = db.collection('inventory').doc(matId);
+                batch.update(matRef, { qty: firebase.firestore.FieldValue.increment(amountToRefund) });
+            }
+        }
+
+        await batch.commit();
+    }
+
     async function handleAuth() {
         if(auth.currentUser) { auth.signOut(); } 
         else {
