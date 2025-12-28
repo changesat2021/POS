@@ -1,63 +1,102 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Inventory | Bean & Bloom</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory Manager</title>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f4f4f4; }
+        .nav-bar { display: flex; gap: 10px; margin-bottom: 20px; }
+        .nav-link { flex: 1; padding: 10px; text-align: center; background: #ddd; color: #333; text-decoration: none; border-radius: 5px; font-weight: bold; }
+        .active { background: #2c3e50; color: white; }
+        .card { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        input { padding: 8px; margin: 5px 0; width: 100%; box-sizing: border-box; }
+        button { padding: 10px; width: 100%; background: #27ae60; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        .item-row { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 10px 0; }
+        .low-stock { color: red; font-weight: bold; }
+    </style>
 </head>
-<body style="font-family:sans-serif;padding:20px">
+<body>
+
+<div class="nav-bar">
+    <a href="index.html" class="nav-link">POS</a>
+    <a href="inventory.html" class="nav-link active">Inventory</a>
+    <a href="floating.html" class="nav-link">Floating/Tabs</a>
+</div>
 
 <h2>📦 Inventory Management</h2>
 
-<input id="name" placeholder="Item name"><br><br>
-<input id="qty" type="number" placeholder="Quantity"><br><br>
-<input id="unit" placeholder="Unit (kg, liter, pcs)"><br><br>
-<input id="ratio" type="number" placeholder="Sales per unit (optional)"><br><br>
+<div class="card">
+    <h3>Add / Restock Item</h3>
+    <input type="text" id="inv-id" placeholder="ID (e.g., sugar, coffee_beans)">
+    <input type="text" id="inv-name" placeholder="Display Name (e.g., Sugar)">
+    <input type="number" id="inv-qty" placeholder="Quantity to Add">
+    <input type="text" id="inv-unit" placeholder="Unit (g, kg, liters)">
+    <button onclick="addStock()">Update Stock</button>
+</div>
 
-<button onclick="saveItem()">Save Item</button>
-
-<hr>
-<h3>Current Inventory</h3>
-<div id="list"></div>
-
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<div class="card">
+    <h3>Current Stock</h3>
+    <div id="inv-list">Loading...</div>
+</div>
 
 <script>
-firebase.initializeApp({
-  apiKey: "AIzaSyAKqsixs_luzjqCY1ZCqrKRtn77wcJs5Iw",
-  authDomain: "bean-5a113.firebaseapp.com",
-  projectId: "bean-5a113"
-});
+    const firebaseConfig = {
+        apiKey: "AIzaSyAKqsixs_luzjqCY1ZCqrKRtn77wcJs5Iw",
+        authDomain: "bean-5a113.firebaseapp.com",
+        projectId: "bean-5a113",
+        storageBucket: "bean-5a113.firebasestorage.app",
+        messagingSenderId: "702927377502",
+        appId: "1:702927377502:web:9e50192a0c431da69850cf"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-const db = firebase.firestore(), auth = firebase.auth();
-const adminUID = "Mo1oHKdvskXeuRjY8h1YFMT5vrl2";
+    function loadInventory() {
+        db.collection('inventory').onSnapshot(snap => {
+            let html = '';
+            snap.forEach(doc => {
+                const d = doc.data();
+                const isLow = d.qty < 50; // Threshold
+                html += `<div class="item-row">
+                    <div>
+                        <strong>${d.name}</strong> (${doc.id})<br>
+                        <small style="color:#888">${d.unit || 'units'}</small>
+                    </div>
+                    <div class="${isLow ? 'low-stock' : ''}">${d.qty}</div>
+                </div>`;
+            });
+            document.getElementById('inv-list').innerHTML = html;
+        });
+    }
 
-auth.onAuthStateChanged(u=>{
-  if(!u || u.uid!==adminUID) {
-    alert("Admin only"); location.href="index.html";
-  }
-  load();
-});
+    async function addStock() {
+        const id = document.getElementById('inv-id').value;
+        const name = document.getElementById('inv-name').value;
+        const qty = parseFloat(document.getElementById('inv-qty').value);
+        const unit = document.getElementById('inv-unit').value;
 
-function saveItem(){
-  db.collection("inventory").add({
-    name: name.value,
-    qty: Number(qty.value),
-    unit: unit.value,
-    ratio: Number(ratio.value)||null
-  });
-}
+        if(!id || !qty) return alert("ID and Qty required");
 
-function load(){
-  db.collection("inventory").onSnapshot(s=>{
-    list.innerHTML="";
-    s.forEach(d=>{
-      const i=d.data();
-      list.innerHTML+=`<p><b>${i.name}</b>: ${i.qty} ${i.unit}</p>`;
-    });
-  });
-}
+        const ref = db.collection('inventory').doc(id);
+        
+        // Check if exists to merge or create
+        const doc = await ref.get();
+        if(doc.exists) {
+            await ref.update({ 
+                qty: firebase.firestore.FieldValue.increment(qty) 
+            });
+        } else {
+            await ref.set({ name: name, qty: qty, unit: unit });
+        }
+        
+        alert("Stock Updated");
+        document.getElementById('inv-qty').value = '';
+    }
+
+    loadInventory();
 </script>
 </body>
 </html>
