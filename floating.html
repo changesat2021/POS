@@ -3,35 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Floating / Tabs</title>
+    <title>Waiter - Floating</title>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f4f4f4; padding-bottom: 80px; }
-        .nav-bar { display: flex; gap: 10px; margin-bottom: 20px; }
-        .nav-link { flex: 1; padding: 10px; text-align: center; background: #ddd; color: #333; text-decoration: none; border-radius: 5px; font-weight: bold; }
+        body { font-family: sans-serif; background: #eee; margin: 0; padding: 10px; padding-bottom: 80px; }
+        .nav-bar { display: flex; gap: 10px; margin-bottom: 15px; }
+        .nav-link { flex: 1; padding: 12px; text-align: center; background: #ddd; color: #333; text-decoration: none; border-radius: 8px; font-weight: bold; }
         .active { background: #e67e22; color: white; }
+
+        .add-box { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        input { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 1rem; }
+        .btn-add { width: 100%; padding: 12px; background: #e67e22; color: white; border: none; border-radius: 5px; font-weight: bold; font-size: 1rem; }
         
-        .debt-card { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid #e74c3c; }
-        .btn-settle { background: #27ae60; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; }
-        .admin-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #ddd; text-align: center; }
+        .card { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 6px solid #c0392b; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .btn-pay { background: #27ae60; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="nav-bar">
     <a href="index.html" class="nav-link">POS</a>
-    <a href="inventory.html" class="nav-link">Inventory</a>
-    <a href="floating.html" class="nav-link active">Floating/Tabs</a>
+    <a href="inventory.html" class="nav-link">Stock</a>
+    <a href="floating.html" class="nav-link active">Waiter</a>
 </div>
 
-<h2>📒 Floating Accounts (Unpaid)</h2>
-<div id="float-list">Waiting for login...</div>
-
-<div class="admin-nav">
-    <button id="auth-btn" onclick="handleAuth()" style="background:none; border:none; text-decoration:underline; color:blue;">Login to View Debts</button>
+<div class="add-box">
+    <h3 style="margin-top:0; color:#e67e22;">📝 Add Floating Money</h3>
+    <input type="text" id="c-name" placeholder="Customer Name / Table #">
+    <input type="number" id="c-amt" placeholder="Amount (ETB)">
+    <button class="btn-add" onclick="addFloat()">Add to Tab</button>
 </div>
+
+<h3 style="margin-left:5px;">Active Tabs (Unpaid)</h3>
+<div id="list">Loading...</div>
 
 <script>
     const firebaseConfig = {
@@ -43,80 +48,64 @@
         appId: "1:702927377502:web:9e50192a0c431da69850cf"
     };
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore(), auth = firebase.auth();
+    const db = firebase.firestore();
 
-    auth.onAuthStateChanged(user => {
-        if(user) {
-            document.getElementById('auth-btn').innerText = "Logout Admin";
-            document.getElementById('float-list').innerText = "Loading...";
-            loadFloating();
-        } else {
-            document.getElementById('auth-btn').innerText = "Login to View Debts";
-            document.getElementById('float-list').innerText = "Restricted Access. Please Login.";
-        }
-    });
-
-    function loadFloating() {
-        // Only show Unresolved (Unpaid) debts
-        db.collection('floating').where('resolved', '==', false).onSnapshot(snap => {
+    function loadTabs() {
+        db.collection('floating').where('status', '==', 'open').onSnapshot(snap => {
             let html = '';
-            if(snap.empty) {
-                document.getElementById('float-list').innerHTML = '<p>No outstanding debts found.</p>';
-                return;
-            }
-            
+            if(snap.empty) html = '<p style="text-align:center; color:#777;">No active floating money.</p>';
             snap.forEach(doc => {
                 const d = doc.data();
-                html += `<div class="debt-card">
+                html += `<div class="card">
                     <div>
-                        <h3 style="margin:0">${d.name}</h3>
-                        <small>${d.item} - ${d.date}</small>
+                        <h3 style="margin:0;">${d.name}</h3>
+                        <span style="font-size:1.2rem; font-weight:bold; color:#c0392b;">${d.amount} ETB</span>
                     </div>
-                    <div style="text-align:right">
-                        <strong style="display:block; font-size:1.2rem">${d.amount} ETB</strong>
-                        <button class="btn-settle" onclick="settle('${doc.id}', '${d.name}', ${d.amount})">Pay / Settle</button>
-                    </div>
+                    <button class="btn-pay" onclick="settle('${doc.id}', '${d.name}', ${d.amount})">SETTLE<br>PAYMENT</button>
                 </div>`;
             });
-            document.getElementById('float-list').innerHTML = html;
-        }, error => {
-            alert("Database Error: " + error.message);
+            document.getElementById('list').innerHTML = html;
         });
     }
 
-    async function settle(docId, name, amount) {
-        if(confirm(`Confirm payment of ${amount} ETB from ${name}?`)) {
-            try {
-                // 1. Mark as resolved
-                await db.collection('floating').doc(docId).update({ resolved: true });
-                
-                // 2. Add cash to today's transaction
-                const today = new Date().toISOString().split('T')[0];
-                await db.collection('transactions').add({
-                    n: `PAYMENT: ${name}`,
-                    q: 1,
-                    p: amount,
-                    d: today,
-                    ex: false,
-                    ts: Date.now(),
-                    isCredit: false,
-                    isPaid: true
-                });
-                alert("Debt Settled & Added to Daily Sales");
-            } catch (e) {
-                alert("Error: " + e.message);
-            }
+    async function addFloat() {
+        const name = document.getElementById('c-name').value;
+        const amt = parseFloat(document.getElementById('c-amt').value);
+        
+        if(!name || !amt) return alert("Please fill name and amount");
+
+        await db.collection('floating').add({
+            name: name,
+            amount: amt,
+            status: 'open',
+            date: new Date().toISOString().split('T')[0],
+            ts: Date.now()
+        });
+        
+        document.getElementById('c-name').value = '';
+        document.getElementById('c-amt').value = '';
+    }
+
+    async function settle(id, name, amount) {
+        if(confirm(`Has ${name} paid the ${amount} ETB?`)) {
+            const today = new Date().toISOString().split('T')[0];
+
+            // 1. Close the Float Tab
+            await db.collection('floating').doc(id).update({ status: 'paid' });
+
+            // 2. Add to Daily Sales (So it shows in index.html)
+            await db.collection('transactions').add({
+                n: `Paid Float: ${name}`,
+                q: 1,
+                p: amount,
+                d: today,
+                ex: false,
+                ts: Date.now()
+            });
         }
     }
 
-    async function handleAuth() {
-        if(auth.currentUser) { auth.signOut(); } 
-        else {
-            const email = prompt("Email:");
-            const pass = prompt("Password:");
-            if(email && pass) await auth.signInWithEmailAndPassword(email, pass).catch(err => alert(err.message));
-        }
-    }
+    loadTabs();
 </script>
 </body>
 </html>
