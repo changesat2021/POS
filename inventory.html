@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Inventory | Bean & Bloom</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family:sans-serif;padding:20px">
+
+<h2>📦 Inventory Management</h2>
+
+<input id="name" placeholder="Item name"><br><br>
+<input id="qty" type="number" placeholder="Quantity"><br><br>
+<input id="unit" placeholder="Unit (kg, liter, pcs)"><br><br>
+<input id="ratio" type="number" placeholder="Sales per unit (optional)"><br><br>
+
+<button onclick="saveItem()">Save Item</button>
+
+<hr>
+<h3>Current Inventory</h3>
+<div id="list"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
+<script>
+firebase.initializeApp({
+  apiKey: "AIzaSyAKqsixs_luzjqCY1ZCqrKRtn77wcJs5Iw",
+  authDomain: "bean-5a113.firebaseapp.com",
+  projectId: "bean-5a113"
+});
+
+const db = firebase.firestore(), auth = firebase.auth();
+const adminUID = "Mo1oHKdvskXeuRjY8h1YFMT5vrl2";
+
+auth.onAuthStateChanged(u=>{
+  if(!u || u.uid!==adminUID) {
+    alert("Admin only"); location.href="index.html";
+  }
+  load();
+});
+
+function saveItem(){
+  db.collection("inventory").add({
+    name: name.value,
+    qty: Number(qty.value),
+    unit: unit.value,
+    ratio: Number(ratio.value)||null
+  });
+}
+
+function load(){
+  db.collection("inventory").onSnapshot(s=>{
+    list.innerHTML="";
+    s.forEach(d=>{
+      const i=d.data();
+      list.innerHTML+=`<p><b>${i.name}</b>: ${i.qty} ${i.unit}</p>`;
+    });
+  });
+}
+</script>
+</body>
+</html>
