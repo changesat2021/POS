@@ -3,50 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventory Manager</title>
+    <title>Inventory</title>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f4f4f4; padding-bottom: 80px; }
+        body { font-family: sans-serif; padding: 20px; background: #f4f4f4; }
         .nav-bar { display: flex; gap: 10px; margin-bottom: 20px; }
-        .nav-link { flex: 1; padding: 10px; text-align: center; background: #ddd; color: #333; text-decoration: none; border-radius: 5px; font-weight: bold; }
+        .nav-link { flex: 1; padding: 12px; text-align: center; background: #ddd; color: #333; text-decoration: none; border-radius: 8px; font-weight: bold; }
         .active { background: #2c3e50; color: white; }
-        .card { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        input { padding: 8px; margin: 5px 0; width: 100%; box-sizing: border-box; }
-        button { padding: 10px; width: 100%; background: #27ae60; color: white; border: none; border-radius: 5px; cursor: pointer; }
-        .item-row { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 10px 0; }
-        .low-stock { color: red; font-weight: bold; }
-        .admin-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #ddd; text-align: center; }
+        
+        .box { background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px; }
+        input { width: 100%; padding: 10px; margin: 5px 0; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background: #2c3e50; color: white; border: none; font-weight: bold; cursor: pointer; }
+        
+        .row { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 10px 0; }
     </style>
 </head>
 <body>
 
 <div class="nav-bar">
     <a href="index.html" class="nav-link">POS</a>
-    <a href="inventory.html" class="nav-link active">Inventory</a>
-    <a href="floating.html" class="nav-link">Floating/Tabs</a>
+    <a href="inventory.html" class="nav-link active">Stock</a>
+    <a href="floating.html" class="nav-link">Waiter</a>
 </div>
 
-<h2>📦 Inventory Management</h2>
-
-<div class="card">
-    <h3>Add / Restock Item</h3>
-    <p style="font-size:0.8rem; color:#666;">ID must match your code (e.g., 'sugar', 'coffee_beans')</p>
-    <input type="text" id="inv-id" placeholder="ID (e.g. sugar)">
-    <input type="text" id="inv-name" placeholder="Display Name (e.g. Sugar)">
-    <input type="number" id="inv-qty" placeholder="Quantity to Add">
-    <input type="text" id="inv-unit" placeholder="Unit (g, kg, liters)">
-    <button onclick="addStock()">Update Stock</button>
+<div class="box">
+    <h3>Add / Restock Material</h3>
+    <input type="text" id="i-id" placeholder="ID (matches code, e.g. sugar)">
+    <input type="text" id="i-name" placeholder="Name (e.g. Sugar)">
+    <input type="number" id="i-qty" placeholder="Quantity to Add">
+    <button onclick="addStock()">ADD STOCK</button>
 </div>
 
-<div class="card">
-    <h3>Current Stock</h3>
-    <div id="inv-list">Waiting for login...</div>
-</div>
-
-<div class="admin-nav">
-    <button id="auth-btn" onclick="handleAuth()" style="background:none; border:none; text-decoration:underline; color:blue;">Login to View Data</button>
+<div class="box">
+    <h3>Current Stock Levels</h3>
+    <div id="list">Loading...</div>
 </div>
 
 <script>
@@ -59,81 +50,41 @@
         appId: "1:702927377502:web:9e50192a0c431da69850cf"
     };
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore(), auth = firebase.auth();
+    const db = firebase.firestore();
 
-    // 1. Check Login State automatically
-    auth.onAuthStateChanged(user => {
-        if(user) {
-            document.getElementById('auth-btn').innerText = "Logout (" + user.email + ")";
-            document.getElementById('inv-list').innerText = "Loading data...";
-            loadInventory();
-        } else {
-            document.getElementById('auth-btn').innerText = "Login to Manage Inventory";
-            document.getElementById('inv-list').innerText = "Please login below to see stock.";
-        }
-    });
-
-    function loadInventory() {
+    function loadInv() {
         db.collection('inventory').onSnapshot(snap => {
             let html = '';
-            if(snap.empty) {
-                document.getElementById('inv-list').innerHTML = "<p>No items in inventory yet.</p>";
-                return;
-            }
             snap.forEach(doc => {
                 const d = doc.data();
-                const isLow = d.qty < 50; 
-                html += `<div class="item-row">
-                    <div>
-                        <strong>${d.name}</strong> (${doc.id})<br>
-                        <small style="color:#888">${d.unit || 'units'}</small>
-                    </div>
-                    <div class="${isLow ? 'low-stock' : ''}">${d.qty}</div>
+                html += `<div class="row">
+                    <span><b>${d.name}</b> <small>(${doc.id})</small></span>
+                    <b>${d.qty}</b>
                 </div>`;
             });
-            document.getElementById('inv-list').innerHTML = html;
-        }, error => {
-            console.error(error);
-            document.getElementById('inv-list').innerText = "Error: " + error.message;
+            document.getElementById('list').innerHTML = html;
         });
     }
 
     async function addStock() {
-        if(!auth.currentUser) return alert("Please Login First");
-        
-        const id = document.getElementById('inv-id').value.trim();
-        const name = document.getElementById('inv-name').value;
-        const qty = parseFloat(document.getElementById('inv-qty').value);
-        const unit = document.getElementById('inv-unit').value;
+        const id = document.getElementById('i-id').value;
+        const name = document.getElementById('i-name').value;
+        const qty = parseFloat(document.getElementById('i-qty').value);
 
-        if(!id || !qty) return alert("ID and Qty required");
+        if(!id || !qty) return alert("Fill ID and Qty");
 
         const ref = db.collection('inventory').doc(id);
-        
-        try {
-            const doc = await ref.get();
-            if(doc.exists) {
-                await ref.update({ 
-                    qty: firebase.firestore.FieldValue.increment(qty) 
-                });
-            } else {
-                await ref.set({ name: name, qty: qty, unit: unit });
-            }
-            alert("Stock Updated!");
-            document.getElementById('inv-qty').value = '';
-        } catch(e) {
-            alert("Error: " + e.message);
+        const doc = await ref.get();
+
+        if(doc.exists) {
+            await ref.update({ qty: firebase.firestore.FieldValue.increment(qty) });
+        } else {
+            await ref.set({ name: name, qty: qty });
         }
+        alert("Stock Updated");
     }
 
-    async function handleAuth() {
-        if(auth.currentUser) { auth.signOut(); } 
-        else {
-            const email = prompt("Email:");
-            const pass = prompt("Password:");
-            if(email && pass) await auth.signInWithEmailAndPassword(email, pass).catch(err => alert(err.message));
-        }
-    }
+    loadInv();
 </script>
 </body>
 </html>
