@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Floating Cash | Bean & Bloom</title>
+</head>
+<body style="font-family:sans-serif;padding:20px">
+
+<h2>💰 Floating Money</h2>
+
+<input type="number" id="amt" placeholder="Amount"><br><br>
+<select id="type">
+  <option value="opening">Opening Cash</option>
+  <option value="in">Add Cash</option>
+  <option value="out">Remove Cash</option>
+</select><br><br>
+
+<button onclick="save()">Save</button>
+
+<hr>
+<h3 id="status"></h3>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+
+<script>
+firebase.initializeApp({
+  apiKey: "AIzaSyAKqsixs_luzjqCY1ZCqrKRtn77wcJs5Iw",
+  authDomain: "bean-5a113.firebaseapp.com",
+  projectId: "bean-5a113"
+});
+
+const db = firebase.firestore(), auth = firebase.auth();
+const adminUID = "Mo1oHKdvskXeuRjY8h1YFMT5vrl2";
+
+auth.onAuthStateChanged(u=>{
+  if(!u || u.uid!==adminUID){
+    alert("Admin only"); location.href="index.html";
+  }
+  load();
+});
+
+function save(){
+  const ref=db.collection("floating").doc("today");
+  ref.get().then(d=>{
+    let f=d.exists?d.data():{opening:0,in:0,out:0};
+    if(type.value==="opening") f.opening=Number(amt.value);
+    if(type.value==="in") f.in+=Number(amt.value);
+    if(type.value==="out") f.out+=Number(amt.value);
+    ref.set(f);
+  });
+}
+
+function load(){
+  db.collection("floating").doc("today").onSnapshot(d=>{
+    if(!d.exists)return;
+    const f=d.data();
+    const current=f.opening+f.in-f.out;
+    status.innerHTML=`
+      Opening: ${f.opening}<br>
+      Added: ${f.in}<br>
+      Removed: ${f.out}<br>
+      <b>Current Cash: ${current} ETB</b>
+    `;
+  });
+}
+</script>
+</body>
+</html>
