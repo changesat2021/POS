@@ -1,69 +1,88 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Floating Cash | Bean & Bloom</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Floating / Tabs</title>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f4f4f4; }
+        .nav-bar { display: flex; gap: 10px; margin-bottom: 20px; }
+        .nav-link { flex: 1; padding: 10px; text-align: center; background: #ddd; color: #333; text-decoration: none; border-radius: 5px; font-weight: bold; }
+        .active { background: #e67e22; color: white; }
+        
+        .debt-card { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid #e74c3c; }
+        .debt-card.paid { border-left-color: #27ae60; opacity: 0.6; }
+        .btn-settle { background: #27ae60; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; }
+    </style>
 </head>
-<body style="font-family:sans-serif;padding:20px">
+<body>
 
-<h2>💰 Floating Money</h2>
+<div class="nav-bar">
+    <a href="index.html" class="nav-link">POS</a>
+    <a href="inventory.html" class="nav-link">Inventory</a>
+    <a href="floating.html" class="nav-link active">Floating/Tabs</a>
+</div>
 
-<input type="number" id="amt" placeholder="Amount"><br><br>
-<select id="type">
-  <option value="opening">Opening Cash</option>
-  <option value="in">Add Cash</option>
-  <option value="out">Remove Cash</option>
-</select><br><br>
-
-<button onclick="save()">Save</button>
-
-<hr>
-<h3 id="status"></h3>
-
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<h2>📒 Floating Accounts (Unpaid)</h2>
+<div id="float-list">Loading...</div>
 
 <script>
-firebase.initializeApp({
-  apiKey: "AIzaSyAKqsixs_luzjqCY1ZCqrKRtn77wcJs5Iw",
-  authDomain: "bean-5a113.firebaseapp.com",
-  projectId: "bean-5a113"
-});
+    const firebaseConfig = {
+        apiKey: "AIzaSyAKqsixs_luzjqCY1ZCqrKRtn77wcJs5Iw",
+        authDomain: "bean-5a113.firebaseapp.com",
+        projectId: "bean-5a113",
+        storageBucket: "bean-5a113.firebasestorage.app",
+        messagingSenderId: "702927377502",
+        appId: "1:702927377502:web:9e50192a0c431da69850cf"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-const db = firebase.firestore(), auth = firebase.auth();
-const adminUID = "Mo1oHKdvskXeuRjY8h1YFMT5vrl2";
+    function loadFloating() {
+        // Only show Unresolved (Unpaid) debts
+        db.collection('floating').where('resolved', '==', false).onSnapshot(snap => {
+            let html = '';
+            if(snap.empty) html = '<p>No outstanding debts.</p>';
+            
+            snap.forEach(doc => {
+                const d = doc.data();
+                html += `<div class="debt-card">
+                    <div>
+                        <h3 style="margin:0">${d.name}</h3>
+                        <small>${d.item} - ${d.date}</small>
+                    </div>
+                    <div style="text-align:right">
+                        <strong style="display:block; font-size:1.2rem">${d.amount} ETB</strong>
+                        <button class="btn-settle" onclick="settle('${doc.id}', '${d.name}', ${d.amount})">Pay / Settle</button>
+                    </div>
+                </div>`;
+            });
+            document.getElementById('float-list').innerHTML = html;
+        });
+    }
 
-auth.onAuthStateChanged(u=>{
-  if(!u || u.uid!==adminUID){
-    alert("Admin only"); location.href="index.html";
-  }
-  load();
-});
+    async function settle(docId, name, amount) {
+        if(confirm(`Confirm payment of ${amount} ETB from ${name}?`)) {
+            // 1. Mark as resolved
+            await db.collection('floating').doc(docId).update({ resolved: true });
+            
+            // 2. Add cash to today's transaction as a "Debt Settlement" (Optional, but good for accounting)
+            const today = new Date().toISOString().split('T')[0];
+            await db.collection('transactions').add({
+                n: `PAYMENT: ${name}`,
+                q: 1,
+                p: amount,
+                d: today,
+                ex: false,
+                ts: Date.now(),
+                isCredit: false
+            });
+        }
+    }
 
-function save(){
-  const ref=db.collection("floating").doc("today");
-  ref.get().then(d=>{
-    let f=d.exists?d.data():{opening:0,in:0,out:0};
-    if(type.value==="opening") f.opening=Number(amt.value);
-    if(type.value==="in") f.in+=Number(amt.value);
-    if(type.value==="out") f.out+=Number(amt.value);
-    ref.set(f);
-  });
-}
-
-function load(){
-  db.collection("floating").doc("today").onSnapshot(d=>{
-    if(!d.exists)return;
-    const f=d.data();
-    const current=f.opening+f.in-f.out;
-    status.innerHTML=`
-      Opening: ${f.opening}<br>
-      Added: ${f.in}<br>
-      Removed: ${f.out}<br>
-      <b>Current Cash: ${current} ETB</b>
-    `;
-  });
-}
+    loadFloating();
 </script>
 </body>
 </html>
