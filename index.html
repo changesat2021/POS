@@ -27,6 +27,13 @@
     .food-btn { border-left-color: var(--food); }
     .add-btn { border-left-color: #7f8c8d; }
 
+    /* Inventory Rows */
+    .inv-row { display: flex; justify-content: space-between; align-items: center; background: white; padding: 8px; margin-bottom: 5px; border-radius: 5px; border: 1px solid #eee; }
+    .inv-name { font-size: 0.9rem; font-weight: bold; flex: 2; color: #333; }
+    .inv-in { width: 70px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; text-align: center; margin-right: 8px; font-size: 1rem;}
+    .inv-btn { background: var(--accent); color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
+    .inv-btn.saved { background: green; }
+
     /* Tables */
     table { width: 100%; border-collapse: collapse; background: white; font-size: 0.85rem; }
     th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
@@ -38,6 +45,7 @@
         body { background: white; }
         .container { max-width: 100%; padding: 0; }
         .card { border: none; }
+        .inv-row { display: none; }
     }
 
     .admin-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #ddd; display: flex; justify-content: space-around; }
@@ -89,13 +97,24 @@
             </div>
             <button onclick="saveEx()" style="width:100%; margin-top:5px; padding:10px; background:red; color:white; border:none; border-radius:5px;">Save Payout (-)</button>
         </div>
+
+        <div class="section-title" style="color:var(--accent); margin-top:30px; border-color:var(--accent);">End of Day: Items Left (Data Only)</div>
+        <div id="inventory-container"></div>
     </div>
 
     <div class="card" style="padding:0; margin-top:20px; overflow:hidden;">
-        <h4 class="print-only" style="padding:10px; background:#f4f4f4; margin:0;">Itemized Report</h4>
+        <h4 class="print-only" style="padding:10px; background:#f4f4f4; margin:0;">Itemized Sales Report</h4>
         <table>
             <thead><tr><th>Description</th><th>Qty</th><th>Total</th><th class="no-print"></th></tr></thead>
             <tbody id="log-body"></tbody>
+        </table>
+    </div>
+
+    <div class="card" style="padding:0; margin-top:20px; overflow:hidden; border:1px solid #ccc;">
+        <h4 style="padding:10px; background:#eee; margin:0; font-size:0.8rem;">Inventory / Stock Count (Data Only)</h4>
+        <table>
+            <thead><tr><th>Item Name</th><th>Amount Left</th><th class="no-print"></th></tr></thead>
+            <tbody id="inv-report-body"></tbody>
         </table>
     </div>
 
@@ -139,12 +158,20 @@
         { n: 'ዳቦ', p: 15, c: 'add' }, { n: 'ግማሽ እንጀራ', p: 20, c: 'add' }, { n: 'እንጀራ', p: 35, c: 'add' }, { n: 'አምባሻ', p: 30, c: 'add' }, { n: 'ሳምቡሳ', p: 25, c: 'add' }, { n: 'ብስኩት', p: 25, c: 'add' }, { n: 'ቴካዌ ከፕ', p: 15, c: 'add' }
     ];
 
+    const INVENTORY_ITEMS = [
+        "ውሃ 1 ሊትር", "ውሃ ግማሽ", "ውሃ 2 ሊትር", "ለስላሳ",
+        "ቡና በኪሎ", "ሽንኩርት", "ፓስታ ቁጥር", "ነጭ ሽንኩርት ኪሎ",
+        "ካሮት ኪሎ", "ቲማቲም ኪሎ", "ጥቅል ጎመን", "ጎመን",
+        "ድንች ኪሎ", "መኮረኒ ኪሎ", "ምስር ኪሎ", "ሩዝ ኪሎ", "ድፍን ምስር ኪሎ"
+    ];
+
     let sel = null, isAdmin = false;
 
     window.onload = () => {
         document.getElementById('work-date').value = new Date().toISOString().split('T')[0];
         document.getElementById('work-date').onchange = sync;
         renderMenu();
+        renderInventoryInputs();
         auth.onAuthStateChanged(user => {
             isAdmin = (user && user.uid === adminUID);
             document.getElementById('auth-btn').innerText = isAdmin ? "Logout Admin" : "Admin Login";
@@ -163,6 +190,50 @@
         });
     }
 
+    function renderInventoryInputs() {
+        const container = document.getElementById('inventory-container');
+        INVENTORY_ITEMS.forEach((name, idx) => {
+            const row = document.createElement('div');
+            row.className = 'inv-row';
+            row.innerHTML = `
+                <span class="inv-name">${name}</span>
+                <input type="number" id="inv-in-${idx}" class="inv-in" placeholder="#">
+                <button class="inv-btn" id="inv-btn-${idx}" onclick="saveInventory('${name}', 'inv-in-${idx}', 'inv-btn-${idx}')">Save</button>
+            `;
+            container.appendChild(row);
+        });
+    }
+
+    // --- FIX: Added Error Handling ---
+    async function saveInventory(itemName, inputId, btnId) {
+        const qty = document.getElementById(inputId).value;
+        if(qty === '') return;
+        
+        const btn = document.getElementById(btnId);
+        btn.innerText = '...';
+        
+        try {
+            await db.collection('inventory').add({
+                n: itemName,
+                left: qty,
+                d: document.getElementById('work-date').value,
+                ts: Date.now()
+            });
+
+            btn.innerText = 'Saved';
+            btn.classList.add('saved');
+            setTimeout(() => {
+                btn.innerText = 'Save';
+                btn.classList.remove('saved');
+                document.getElementById(inputId).value = '';
+            }, 1500);
+        } catch (error) {
+            console.error(error);
+            alert("Error saving: " + error.message + "\nCheck internet or admin rules.");
+            btn.innerText = 'Retry';
+        }
+    }
+
     async function confirmSale() {
         const q = parseInt(document.getElementById('m-qty').value);
         if(!q) return;
@@ -177,18 +248,17 @@
         document.getElementById('ex-name').value = ''; document.getElementById('ex-amt').value = '';
     }
 
-    // --- NEW FUNCTION FOR REVENUE ---
     async function saveRev() {
         const n = document.getElementById('rev-name').value, p = parseFloat(document.getElementById('rev-amt').value);
         if(!n || !p) return;
-        // ex: false ensures it adds to Sales, not Expenses
         await db.collection('transactions').add({ n: "IN: " + n, q: 1, p: p, d: document.getElementById('work-date').value, ex: false, ts: Date.now() });
         document.getElementById('rev-name').value = ''; document.getElementById('rev-amt').value = '';
     }
-    // --------------------------------
 
     function sync() {
         const date = document.getElementById('work-date').value;
+        
+        // 1. Sync Sales
         db.collection('transactions').where('d', '==', date).onSnapshot(snap => {
             let s=0, e=0, html='', sum = {};
             snap.forEach(doc => {
@@ -199,14 +269,31 @@
             });
             for (let name in sum) {
                 const item = sum[name];
-                // Added distinct green color for 'IN:' items in list, Red for Expenses, Black for Menu
                 const color = item.isEx ? 'red' : (name.startsWith('IN:') ? 'green' : 'black');
-                html += `<tr><td style="color:${color}; font-weight:${name.startsWith('IN:')?'bold':'normal'}">${name}</td><td>${item.q}</td><td>${item.p}</td><td class="no-print">${isAdmin ? `<button onclick="delDoc('${item.id}')" style="color:red;border:none;background:none;font-weight:bold;">X</button>` : ''}</td></tr>`;
+                html += `<tr><td style="color:${color}; font-weight:${name.startsWith('IN:')?'bold':'normal'}">${name}</td><td>${item.q}</td><td>${item.p}</td><td class="no-print">${isAdmin ? `<button onclick="delDoc('${item.id}', 'transactions')" style="color:red;border:none;background:none;font-weight:bold;">X</button>` : ''}</td></tr>`;
             }
             document.getElementById('log-body').innerHTML = html;
             document.getElementById('total-s').innerText = s;
             document.getElementById('total-e').innerText = e;
             document.getElementById('total-n').innerText = (s - e) + " ETB";
+        });
+
+        // 2. Sync Inventory Report (FIXED: Sorting done in JS to avoid Index Error)
+        db.collection('inventory').where('d', '==', date).onSnapshot(snap => {
+            let list = [];
+            snap.forEach(doc => {
+                list.push({ ...doc.data(), id: doc.id });
+            });
+            // Sort Descending by Time (Newest First)
+            list.sort((a, b) => b.ts - a.ts);
+
+            let html = '';
+            list.forEach(i => {
+                html += `<tr><td>${i.n}</td><td>${i.left}</td><td class="no-print">${isAdmin ? `<button onclick="delDoc('${i.id}', 'inventory')" style="color:red;border:none;background:none;font-weight:bold;">X</button>` : ''}</td></tr>`;
+            });
+            
+            if(html === '') html = '<tr><td colspan="3" style="color:#aaa; text-align:center;">No data recorded today</td></tr>';
+            document.getElementById('inv-report-body').innerHTML = html;
         });
     }
 
@@ -219,14 +306,20 @@
     }
 
     async function clearDay() {
-        const snap = await db.collection('transactions').where('d', '==', document.getElementById('work-date').value).get();
+        const date = document.getElementById('work-date').value;
         const batch = db.batch();
-        snap.forEach(d => batch.delete(d.ref));
+        
+        const tSnap = await db.collection('transactions').where('d', '==', date).get();
+        tSnap.forEach(d => batch.delete(d.ref));
+        
+        const iSnap = await db.collection('inventory').where('d', '==', date).get();
+        iSnap.forEach(d => batch.delete(d.ref));
+
         await batch.commit();
         alert("System Brushed. Ready for next day.");
     }
 
-    async function delDoc(id) { if(confirm("Admin: Delete?")) await db.collection('transactions').doc(id).delete(); }
+    async function delDoc(id, col) { if(confirm("Admin: Delete record?")) await db.collection(col).doc(id).delete(); }
     
     async function handleAuth() {
         if(auth.currentUser) { auth.signOut(); } 
