@@ -15,7 +15,10 @@
     
     /* UI Components */
     header { display: flex; justify-content: space-between; align-items: center; background: var(--white); padding: 12px; border-radius: var(--radius); margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-    .dashboard { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+    
+    /* MODIFIED: Changed to 2 columns to fit 4 items neatly */
+    .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+    
     .card { background: var(--white); padding: 12px; border-radius: var(--radius); text-align: center; border: 1px solid #eee; }
     .val { font-size: 1.1rem; font-weight: 800; display: block; }
     .lbl { font-size: 0.65rem; color: #888; text-transform: uppercase; }
@@ -71,6 +74,7 @@
         <div class="card"><span class="lbl">Sales + Inc</span><span class="val" id="total-s" style="color:green">0</span></div>
         <div class="card"><span class="lbl">Expenses</span><span class="val" id="total-e" style="color:red">0</span></div>
         <div class="card" style="background:var(--accent); color:white"><span class="lbl" style="color:#aaa">Net Cash</span><span class="val" id="total-n">0</span></div>
+        <div class="card" style="border-color:var(--food);"><span class="lbl" style="color:var(--food)">Food Plates Sold</span><span class="val" id="total-plates" style="color:var(--food)">0</span></div>
     </div>
 
     <div class="no-print">
@@ -158,6 +162,9 @@
         { n: 'ዳቦ', p: 15, c: 'add' }, { n: 'ግማሽ እንጀራ', p: 20, c: 'add' }, { n: 'እንጀራ', p: 35, c: 'add' }, { n: 'አምባሻ', p: 30, c: 'add' }, { n: 'ሳምቡሳ', p: 25, c: 'add' }, { n: 'ብስኩት', p: 25, c: 'add' }, { n: 'ቴካዌ ከፕ', p: 15, c: 'add' }
     ];
 
+    // Helper: Create a Set of all names that constitute "Food" (Fasting + Non-Fasting)
+    const FOOD_SET = new Set(MENU.filter(i => i.c === 'fasting' || i.c === 'nonfast').map(i => i.n));
+
     const INVENTORY_ITEMS = [
         "ውሃ 1 ሊትር", "ውሃ ግማሽ", "ውሃ 2 ሊትር", "ለስላሳ", "እንጀራ", "ዳቦ",
         "ቡና በኪሎ", "ሽንኩርት", "ፓስታ ቁጥር", "ነጭ ሽንኩርት ኪሎ",
@@ -204,33 +211,19 @@
         });
     }
 
-    // --- FIX: Added Error Handling ---
     async function saveInventory(itemName, inputId, btnId) {
         const qty = document.getElementById(inputId).value;
         if(qty === '') return;
-        
         const btn = document.getElementById(btnId);
         btn.innerText = '...';
-        
         try {
             await db.collection('inventory').add({
-                n: itemName,
-                left: qty,
-                d: document.getElementById('work-date').value,
-                ts: Date.now()
+                n: itemName, left: qty, d: document.getElementById('work-date').value, ts: Date.now()
             });
-
-            btn.innerText = 'Saved';
-            btn.classList.add('saved');
-            setTimeout(() => {
-                btn.innerText = 'Save';
-                btn.classList.remove('saved');
-                document.getElementById(inputId).value = '';
-            }, 1500);
+            btn.innerText = 'Saved'; btn.classList.add('saved');
+            setTimeout(() => { btn.innerText = 'Save'; btn.classList.remove('saved'); document.getElementById(inputId).value = ''; }, 1500);
         } catch (error) {
-            console.error(error);
-            alert("Error saving: " + error.message + "\nCheck internet or admin rules.");
-            btn.innerText = 'Retry';
+            console.error(error); alert("Error saving."); btn.innerText = 'Retry';
         }
     }
 
@@ -258,15 +251,24 @@
     function sync() {
         const date = document.getElementById('work-date').value;
         
-        // 1. Sync Sales
+        // Sync Sales & Expenses & Calculate Food Plates
         db.collection('transactions').where('d', '==', date).onSnapshot(snap => {
-            let s=0, e=0, html='', sum = {};
+            let s=0, e=0, foodPlates=0, html='', sum = {};
+            
             snap.forEach(doc => {
                 const t = doc.data();
                 if(t.ex) e += t.p; else s += t.p;
+                
+                // --- LOGIC ADDED: CHECK IF ITEM IS FOOD, THEN ADD QUANTITY ---
+                if (!t.ex && FOOD_SET.has(t.n)) {
+                    foodPlates += t.q;
+                }
+                // -------------------------------------------------------------
+
                 if(!sum[t.n]) sum[t.n] = { q: 0, p: 0, isEx: t.ex, id: doc.id };
                 sum[t.n].q += t.q; sum[t.n].p += t.p;
             });
+
             for (let name in sum) {
                 const item = sum[name];
                 const color = item.isEx ? 'red' : (name.startsWith('IN:') ? 'green' : 'black');
@@ -276,22 +278,20 @@
             document.getElementById('total-s').innerText = s;
             document.getElementById('total-e').innerText = e;
             document.getElementById('total-n').innerText = (s - e) + " ETB";
+            
+            // Update the new Food Plates Counter
+            document.getElementById('total-plates').innerText = foodPlates;
         });
 
-        // 2. Sync Inventory Report (FIXED: Sorting done in JS to avoid Index Error)
+        // Sync Inventory
         db.collection('inventory').where('d', '==', date).onSnapshot(snap => {
             let list = [];
-            snap.forEach(doc => {
-                list.push({ ...doc.data(), id: doc.id });
-            });
-            // Sort Descending by Time (Newest First)
+            snap.forEach(doc => list.push({ ...doc.data(), id: doc.id }));
             list.sort((a, b) => b.ts - a.ts);
-
             let html = '';
             list.forEach(i => {
                 html += `<tr><td>${i.n}</td><td>${i.left}</td><td class="no-print">${isAdmin ? `<button onclick="delDoc('${i.id}', 'inventory')" style="color:red;border:none;background:none;font-weight:bold;">X</button>` : ''}</td></tr>`;
             });
-            
             if(html === '') html = '<tr><td colspan="3" style="color:#aaa; text-align:center;">No data recorded today</td></tr>';
             document.getElementById('inv-report-body').innerHTML = html;
         });
@@ -300,21 +300,16 @@
     function initiatePrint() {
         document.getElementById('pdf-date').innerText = "DATE: " + document.getElementById('work-date').value;
         window.print();
-        setTimeout(() => {
-            if(confirm("Report Saved? Clear all daily records for a fresh start?")) clearDay();
-        }, 1500);
+        setTimeout(() => { if(confirm("Report Saved? Clear all daily records for a fresh start?")) clearDay(); }, 1500);
     }
 
     async function clearDay() {
         const date = document.getElementById('work-date').value;
         const batch = db.batch();
-        
         const tSnap = await db.collection('transactions').where('d', '==', date).get();
         tSnap.forEach(d => batch.delete(d.ref));
-        
         const iSnap = await db.collection('inventory').where('d', '==', date).get();
         iSnap.forEach(d => batch.delete(d.ref));
-
         await batch.commit();
         alert("System Brushed. Ready for next day.");
     }
