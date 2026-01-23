@@ -16,7 +16,7 @@
     /* UI Components */
     header { display: flex; justify-content: space-between; align-items: center; background: var(--white); padding: 12px; border-radius: var(--radius); margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     
-    /* MODIFIED: Changed to 2 columns to fit 4 items neatly */
+    /* Dashboard */
     .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
     
     .card { background: var(--white); padding: 12px; border-radius: var(--radius); text-align: center; border: 1px solid #eee; }
@@ -165,11 +165,20 @@
     // Helper: Create a Set of all names that constitute "Food" (Fasting + Non-Fasting)
     const FOOD_SET = new Set(MENU.filter(i => i.c === 'fasting' || i.c === 'nonfast').map(i => i.n));
 
+    // UPDATED INVENTORY LIST
     const INVENTORY_ITEMS = [
-        "ውሃ 1 ሊትር", "ውሃ ግማሽ", "ውሃ 2 ሊትር", "ለስላሳ", "እንጀራ", "ዳቦ",
-        "ቡና በኪሎ", "ሽንኩርት", "ፓስታ ቁጥር", "ነጭ ሽንኩርት ኪሎ",
-        "ካሮት ኪሎ", "ቲማቲም ኪሎ", "ጥቅል ጎመን", "ጎመን",
-        "ድንች ኪሎ", "መኮረኒ ኪሎ", "ምስር ኪሎ", "ሩዝ ኪሎ", "ድፍን ምስር ኪሎ"
+        "ውሃ ግማሽ",
+        "ውሃ 1 ሊትር",
+        "ውሃ 2 ሊትር",
+        "ለስላሳ",
+        "እንጀራ",
+        "ዳቦ",
+        "እንቁላል",
+        "የጥብስ ስጋ",
+        "የዱለት ስጋ",
+        "የቋንጣ ስጋ",
+        "ፓስታ በፐርሰንት",
+        "ቡና በፐርሰንት"
     ];
 
     let sel = null, isAdmin = false;
@@ -259,11 +268,9 @@
                 const t = doc.data();
                 if(t.ex) e += t.p; else s += t.p;
                 
-                // --- LOGIC ADDED: CHECK IF ITEM IS FOOD, THEN ADD QUANTITY ---
                 if (!t.ex && FOOD_SET.has(t.n)) {
                     foodPlates += t.q;
                 }
-                // -------------------------------------------------------------
 
                 if(!sum[t.n]) sum[t.n] = { q: 0, p: 0, isEx: t.ex, id: doc.id };
                 sum[t.n].q += t.q; sum[t.n].p += t.p;
@@ -279,7 +286,6 @@
             document.getElementById('total-e').innerText = e;
             document.getElementById('total-n').innerText = (s - e) + " ETB";
             
-            // Update the new Food Plates Counter
             document.getElementById('total-plates').innerText = foodPlates;
         });
 
