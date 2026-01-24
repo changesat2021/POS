@@ -62,7 +62,7 @@
     .stock-curr { font-weight: bold; color: var(--accent); }
     
     /* Group Header Style */
-    .group-header { background: #f0f4f8; font-weight: bold; color: var(--primary); font-size: 0.8rem; border-bottom: 2px solid #ddd; }
+    .group-header { background: #f0f4f8; font-weight: bold; color: var(--primary); font-size: 0.85rem; border-bottom: 2px solid #ddd; padding-top:10px; }
 
     .print-only { display: none; }
     @media print {
@@ -75,7 +75,6 @@
         .container { max-width: 100%; padding: 0; }
         .card { border: none; }
         #live-inv-body { font-size: 10px; }
-        /* Ensure group headers print nicely */
         .group-header { background: #eee !important; -webkit-print-color-adjust: exact; }
     }
 
@@ -162,10 +161,10 @@
             <div id="restock-container" style="padding-top:10px;"></div>
         </div>
         
-        <button class="accordion">Sales Report (Description | Qty | Total)</button>
+        <button class="accordion">Sales Report (Grouped Summary)</button>
         <div class="panel">
             <table style="width:100%; margin-top:10px;">
-                <thead><tr><th>Description</th><th>Qty</th><th>Total</th><th class="no-print"></th></tr></thead>
+                <thead><tr><th>Description</th><th>Qty</th><th>Total</th></tr></thead>
                 <tbody id="log-body"></tbody>
             </table>
         </div>
@@ -363,6 +362,19 @@
         document.getElementById('rev-name').value = ''; document.getElementById('rev-amt').value = '';
     }
 
+    // --- HELPER TO SUM ITEMS BY NAME ---
+    function aggregateItems(items) {
+        const map = {};
+        items.forEach(t => {
+            if(!map[t.n]) {
+                map[t.n] = { n: t.n, q: 0, p: 0 };
+            }
+            map[t.n].q += t.q;
+            map[t.n].p += t.p;
+        });
+        return Object.values(map);
+    }
+
     async function sync() {
         const date = document.getElementById('work-date').value;
         if(dailyListener) dailyListener();
@@ -381,13 +393,13 @@
 
         dailyListener = db.collection('transactions').where('d', '==', date).onSnapshot(snap => {
             let s=0, e=0, foodPlates=0, bunaQty=0;
-            let allTrans = []; // Store trans for grouping
+            let allTrans = []; 
             
             INVENTORY_ITEMS.forEach(i => { stockState[i].added = 0; stockState[i].used = 0; });
 
             snap.forEach(doc => {
                 const t = doc.data();
-                t.id = doc.id; // Save ID for admin delete
+                t.id = doc.id; 
                 allTrans.push(t);
 
                 if(t.type !== 'restock') {
@@ -409,51 +421,58 @@
                 }
             });
             
-            // --- GROUPED RENDERING LOGIC ---
+            // --- GROUPED & AGGREGATED RENDERING LOGIC ---
             let html = '';
             
-            // 1. Render Menu Categories
+            // 1. Render Menu Categories (Aggregated)
             const definedCats = ['hot', 'fasting', 'juices', 'nonfast', 'add'];
             
             definedCats.forEach(catKey => {
-                const catItems = allTrans.filter(t => {
+                // Filter raw transactions for this category
+                const catItemsRaw = allTrans.filter(t => {
                    if(t.ex || t.type === 'restock' || t.n.startsWith('IN:')) return false;
                    const m = MENU.find(mItem => mItem.n === t.n);
                    return m && m.c === catKey;
                 });
                 
-                if(catItems.length > 0) {
-                    html += `<tr><td colspan="4" class="group-header">${CAT_LABELS[catKey]}</td></tr>`;
-                    catItems.forEach(t => {
-                         html += `<tr><td>${t.n}</td><td>${t.q}</td><td>${t.p}</td><td class="no-print">${isAdmin ? `<button onclick="delDoc('${t.id}')" style="color:red;border:none;">X</button>` : ''}</td></tr>`;
+                // Aggregate them (Sum totals)
+                const catItemsAggregated = aggregateItems(catItemsRaw);
+
+                if(catItemsAggregated.length > 0) {
+                    html += `<tr><td colspan="3" class="group-header">${CAT_LABELS[catKey]}</td></tr>`;
+                    catItemsAggregated.forEach(t => {
+                         html += `<tr><td>${t.n}</td><td>${t.q}</td><td>${t.p}</td></tr>`;
                     });
                 }
             });
 
-            // 2. Render Custom Income (IN:)
-            const incomeItems = allTrans.filter(t => t.n.startsWith('IN:'));
-            if(incomeItems.length > 0) {
-                 html += `<tr><td colspan="4" class="group-header" style="color:green;">ተጨማሪ ገቢ (Other Income)</td></tr>`;
-                 incomeItems.forEach(t => {
-                     html += `<tr><td style="color:green;">${t.n}</td><td>${t.q}</td><td>${t.p}</td><td class="no-print">${isAdmin ? `<button onclick="delDoc('${t.id}')" style="color:red;border:none;">X</button>` : ''}</td></tr>`;
+            // 2. Render Custom Income (IN:) (Aggregated)
+            const incomeItemsRaw = allTrans.filter(t => t.n.startsWith('IN:'));
+            const incomeItemsAgg = aggregateItems(incomeItemsRaw);
+            if(incomeItemsAgg.length > 0) {
+                 html += `<tr><td colspan="3" class="group-header" style="color:green;">ተጨማሪ ገቢ (Other Income)</td></tr>`;
+                 incomeItemsAgg.forEach(t => {
+                     html += `<tr><td style="color:green;">${t.n}</td><td>${t.q}</td><td>${t.p}</td></tr>`;
                  });
             }
 
-            // 3. Render Expenses (OUT:)
-            const expenseItems = allTrans.filter(t => t.ex);
-            if(expenseItems.length > 0) {
-                 html += `<tr><td colspan="4" class="group-header" style="color:red;">ወጭወች (Expenses)</td></tr>`;
-                 expenseItems.forEach(t => {
-                     html += `<tr><td style="color:red;">${t.n}</td><td>${t.q}</td><td>${t.p}</td><td class="no-print">${isAdmin ? `<button onclick="delDoc('${t.id}')" style="color:red;border:none;">X</button>` : ''}</td></tr>`;
+            // 3. Render Expenses (OUT:) (Aggregated)
+            const expenseItemsRaw = allTrans.filter(t => t.ex);
+            const expenseItemsAgg = aggregateItems(expenseItemsRaw);
+            if(expenseItemsAgg.length > 0) {
+                 html += `<tr><td colspan="3" class="group-header" style="color:red;">ወጭወች (Expenses)</td></tr>`;
+                 expenseItemsAgg.forEach(t => {
+                     html += `<tr><td style="color:red;">${t.n}</td><td>${t.q}</td><td>${t.p}</td></tr>`;
                  });
             }
 
-            // 4. Render Restock Logs
-            const stockItems = allTrans.filter(t => t.type === 'restock');
-            if(stockItems.length > 0) {
-                 html += `<tr><td colspan="4" class="group-header" style="color:blue;">የገቡ እቃዎች (Stock Log)</td></tr>`;
-                 stockItems.forEach(t => {
-                     html += `<tr><td style="color:blue;">${t.n}</td><td>${t.q}</td><td>-</td><td class="no-print">${isAdmin ? `<button onclick="delDoc('${t.id}')" style="color:red;border:none;">X</button>` : ''}</td></tr>`;
+            // 4. Render Restock Logs (Aggregated)
+            const stockItemsRaw = allTrans.filter(t => t.type === 'restock');
+            const stockItemsAgg = aggregateItems(stockItemsRaw);
+            if(stockItemsAgg.length > 0) {
+                 html += `<tr><td colspan="3" class="group-header" style="color:blue;">የገቡ እቃዎች (Stock Log)</td></tr>`;
+                 stockItemsAgg.forEach(t => {
+                     html += `<tr><td style="color:blue;">${t.n}</td><td>${t.q}</td><td>-</td></tr>`;
                  });
             }
 
