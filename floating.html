@@ -21,18 +21,13 @@
     .val { font-size: 1.1rem; font-weight: 800; display: block; }
     .lbl { font-size: 0.7rem; color: #888; text-transform: uppercase; font-weight:bold; }
     
-    /* ACCORDION / DROPDOWN STYLES */
-    .accordion {
-        background-color: white; color: var(--primary); cursor: pointer; padding: 15px; width: 100%; border: none;
-        text-align: left; outline: none; font-size: 0.95rem; transition: 0.4s; border-radius: 10px; margin-bottom: 5px;
-        font-weight: bold; display: flex; justify-content: space-between; align-items: center; border: 1px solid #ddd;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    /* SECTION HEADERS (No longer dropdowns) */
+    .section-header {
+        background-color: #fff; color: var(--primary); padding: 12px 5px; width: 100%; 
+        text-align: left; font-size: 1.1rem; font-weight: bold; border-bottom: 2px solid #ddd;
+        margin-top: 20px; display:block;
     }
-    .accordion.active, .accordion:hover { background-color: #f9f9f9; }
-    .accordion:after { content: '\002B'; font-size: 1.2rem; color: #777; margin-left: 5px; }
-    .accordion.active:after { content: "\2212"; } /* Minus sign */
-    .panel { padding: 0 15px; background-color: white; max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; margin-bottom: 10px; border-radius: 0 0 10px 10px; }
-    .panel.show { border-bottom: 1px solid #ddd; padding-bottom: 15px; max-height: 1000px; /* Arbitrary large height */ }
+    .section-content { display: block; margin-bottom: 10px; }
 
     /* Menu Grid */
     .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
@@ -57,9 +52,7 @@
     @media print {
         .no-print { display: none !important; }
         .print-only { display: block !important; }
-        .accordion { border:none; padding:0; margin: 10px 0; pointer-events: none; }
-        .accordion:after { content: none; }
-        .panel { max-height: none !important; display: block; padding:0; border:none; }
+        .section-header { border:none; padding:0; margin: 10px 0; font-size: 14px; text-decoration: underline; }
         body { background: white; }
         .container { max-width: 100%; padding: 0; }
         .card { border: none; }
@@ -87,8 +80,8 @@
     <div class="dashboard">
         <div class="card"><span class="lbl">የተሸጠው ብር</span><span class="val" id="total-s" style="color:green">0</span></div>
         <div class="card"><span class="lbl">ወጭወች</span><span class="val" id="total-e" style="color:red">0</span></div>
-        <div class="card" style="background:var(--accent); color:white"><span class="lbl" style="color:#aaa">Net Cash</span><span class="val" id="total-n">0</span></div>
-        <div class="card" style="border-color:var(--food);"><span class="lbl" style="color:var(--food)">Plates</span><span class="val" id="total-plates" style="color:var(--food)">0</span></div>
+        <div class="card" style="background:var(--accent); color:white"><span class="lbl" style="color:#aaa">ከወጭ ቀሪ</span><span class="val" id="total-n">0</span></div>
+        <div class="card" style="border-color:var(--food);"><span class="lbl" style="color:var(--food)">የምግብ ቁጥር</span><span class="val" id="total-plates" style="color:var(--food)">0</span></div>
         
         <div class="card" id="admin-month-card" style="display:none; grid-column: span 2; background: #2c3e50; border: 2px solid var(--gold); margin-top:5px;">
             <span class="lbl" style="color:var(--gold);">ወርሃዊ ገቢ (Net)</span>
@@ -107,31 +100,24 @@
     </div>
 
     <div class="no-print">
-        <button class="accordion" style="background:#333; color:white;">መኖር ያለባቸው ነገሮች (Inventory)</button>
-        <div class="panel" style="display:block; max-height:1000px;"> 
-            <table class="inv-table">
-                <thead><tr><th>Item</th><th>Yest.</th><th>Added</th><th>Sold</th><th>LEFT</th></tr></thead>
-                <tbody id="live-inv-body"></tbody>
-            </table>
-        </div>
+        
+        <div class="section-header">ትኩስና ቀዝቃዛ መጠጦች</div>
+        <div class="section-content"><div id="grid-hot" class="menu-grid"></div></div>
 
-        <button class="accordion">ትኩስና ቀዝቃዛ መጠጦች</button>
-        <div class="panel"><div id="grid-hot" class="menu-grid"></div></div>
+        <div class="section-header">የፆም ምግቦች</div>
+        <div class="section-content"><div id="grid-fasting" class="menu-grid"></div></div>
 
-        <button class="accordion">የፆም ምግቦች</button>
-        <div class="panel"><div id="grid-fasting" class="menu-grid"></div></div>
+        <div class="section-header">ጁሶች</div>
+        <div class="section-content"><div id="grid-juices" class="menu-grid"></div></div>
 
-        <button class="accordion">ጁሶች</button>
-        <div class="panel"><div id="grid-juices" class="menu-grid"></div></div>
+        <div class="section-header">የፍስክ ምግቦች</div>
+        <div class="section-content"><div id="grid-nonfast" class="menu-grid"></div></div>
 
-        <button class="accordion">የፍስክ ምግቦች</button>
-        <div class="panel"><div id="grid-nonfast" class="menu-grid"></div></div>
+        <div class="section-header">ተጨማሪ ነገሮች</div>
+        <div class="section-content"><div id="grid-add" class="menu-grid"></div></div>
 
-        <button class="accordion">ተጨማሪ ነገሮች</button>
-        <div class="panel"><div id="grid-add" class="menu-grid"></div></div>
-
-        <button class="accordion">ተጨማሪ ገቢ & ወጭወች</button>
-        <div class="panel">
+        <div class="section-header">ተጨማሪ ገቢ & ወጭወች</div>
+        <div class="section-content">
             <div style="background:#fff; padding:10px; border-radius:10px; margin-top:10px; border:1px dashed green;">
                 <p style="font-weight:bold; color:green; font-size:0.8rem; margin:0 0 5px 0;">ተጨማሪ ገቢ (Income)</p>
                 <div style="display:flex; gap:5px;">
@@ -151,13 +137,21 @@
             </div>
         </div>
 
-        <button class="accordion" style="color:green; border-color:green;">የገቡ ነገሮች (Add Stock)</button>
-        <div class="panel">
+        <div class="section-header" style="color:green; border-color:green;">የገቡ ነገሮች (Add Stock)</div>
+        <div class="section-content">
             <div id="restock-container" style="padding-top:10px;"></div>
+        </div>
+
+        <div class="section-header" style="background:#333; color:white; padding:10px;">መኖር ያለባቸው ነገሮች (Inventory)</div>
+        <div class="section-content" style="display:block;"> 
+            <table class="inv-table">
+                <thead><tr><th>Item</th><th>Yest.</th><th>Added</th><th>Sold</th><th>LEFT</th></tr></thead>
+                <tbody id="live-inv-body"></tbody>
+            </table>
         </div>
     </div>
 
-    <div class="card" style="padding:0; margin-top:20px; overflow:hidden;">
+    <div class="card" style="padding:0; margin-top:30px; overflow:hidden;">
         <h4 class="print-only" style="padding:10px; background:#f4f4f4; margin:0;">Sales Report</h4>
         <table>
             <thead><tr><th>Description</th><th>Qty</th><th>Total</th><th class="no-print"></th></tr></thead>
@@ -250,7 +244,6 @@
     window.onload = () => {
         document.getElementById('work-date').value = new Date().toISOString().split('T')[0];
         document.getElementById('work-date').onchange = sync;
-        setupAccordions();
         renderMenu();
         renderRestockInputs();
         auth.onAuthStateChanged(user => {
@@ -264,23 +257,6 @@
             sync();
         });
     };
-
-    function setupAccordions() {
-        const acc = document.getElementsByClassName("accordion");
-        for (let i = 0; i < acc.length; i++) {
-            acc[i].addEventListener("click", function() {
-                this.classList.toggle("active");
-                const panel = this.nextElementSibling;
-                if (panel.style.maxHeight) {
-                    panel.style.maxHeight = null;
-                    panel.classList.remove('show');
-                } else {
-                    panel.classList.add('show');
-                    panel.style.maxHeight = panel.scrollHeight + "px";
-                }
-            });
-        }
-    }
 
     function renderMenu() {
         MENU.forEach(i => {
