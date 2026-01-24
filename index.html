@@ -15,26 +15,15 @@
     
     header { display: flex; justify-content: space-between; align-items: center; background: var(--white); padding: 12px; border-radius: var(--radius); margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     
-    /* Stats Cards */
     .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
     .card { background: var(--white); padding: 12px; border-radius: var(--radius); text-align: center; border: 1px solid #eee; }
     .val { font-size: 1.1rem; font-weight: 800; display: block; }
     .lbl { font-size: 0.7rem; color: #888; text-transform: uppercase; font-weight:bold; }
     
-    /* STATIC HEADERS (For Menu Items) */
-    .section-header {
-        background-color: #fff; color: var(--primary); padding: 12px 5px; width: 100%; 
-        text-align: left; font-size: 1.1rem; font-weight: bold; border-bottom: 2px solid #ddd;
-        margin-top: 20px; display:block;
-    }
+    .section-header { background-color: #fff; color: var(--primary); padding: 12px 5px; width: 100%; text-align: left; font-size: 1.1rem; font-weight: bold; border-bottom: 2px solid #ddd; margin-top: 20px; display:block; }
     .section-content { display: block; margin-bottom: 10px; }
 
-    /* COLLAPSIBLE ACCORDION (For Stock, Inventory, Report) */
-    .accordion {
-        background-color: #e8e8e8; color: #333; cursor: pointer; padding: 15px; width: 100%; border: none;
-        text-align: left; outline: none; font-size: 1rem; transition: 0.4s; border-radius: 8px; margin-top: 15px;
-        font-weight: bold; display: flex; justify-content: space-between; align-items: center; border: 1px solid #ccc;
-    }
+    .accordion { background-color: #e8e8e8; color: #333; cursor: pointer; padding: 15px; width: 100%; border: none; text-align: left; outline: none; font-size: 1rem; transition: 0.4s; border-radius: 8px; margin-top: 15px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; border: 1px solid #ccc; }
     .accordion.active, .accordion:hover { background-color: #dcdcdc; }
     .accordion:after { content: '\002B'; font-weight: bold; font-size: 1.2rem; }
     .accordion.active:after { content: "\2212"; }
@@ -42,19 +31,16 @@
     .panel { padding: 0 10px; background-color: white; max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; margin-bottom: 5px; border-radius: 0 0 8px 8px; }
     .panel.show { padding-top: 10px; padding-bottom: 10px; border: 1px solid #ccc; border-top: none; }
 
-    /* Menu Grid */
     .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
     .menu-btn { background: var(--white); border: 1px solid #ddd; padding: 12px; border-radius: var(--radius); text-align: center; cursor: pointer; border-left: 4px solid var(--primary); }
     .food-btn { border-left-color: var(--food); }
     .add-btn { border-left-color: #7f8c8d; }
 
-    /* Inventory & Inputs */
     .inv-row { display: flex; justify-content: space-between; align-items: center; background: white; padding: 8px; margin-bottom: 5px; border-radius: 5px; border: 1px solid #eee; }
     .inv-name { font-size: 0.9rem; font-weight: bold; flex: 2; color: #333; }
     .inv-in { width: 70px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; text-align: center; margin-right: 8px; font-size: 1rem; border-color:green;}
     .inv-btn { background: green; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
 
-    /* Tables */
     table { width: 100%; border-collapse: collapse; background: white; font-size: 0.85rem; }
     th, td { padding: 8px; text-align: left; border-bottom: 1px solid #eee; }
     .inv-table th { background: #eee; font-size: 0.75rem; }
@@ -71,12 +57,12 @@
         body { background: white; }
         .container { max-width: 100%; padding: 0; }
         .card { border: none; }
-        #live-inv-body { font-size: 10px; }
     }
 
     .admin-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #ddd; display: flex; justify-content: space-around; }
     .btn-payout { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 5px; font-weight: bold; cursor: pointer; }
     .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; z-index: 100; }
+    .modal-content { background:white; padding:20px; border-radius:15px; text-align:center; }
 </style>
 </head>
 <body>
@@ -115,7 +101,6 @@
     </div>
 
     <div class="no-print">
-        
         <div class="section-header">ትኩስና ቀዝቃዛ መጠጦች</div>
         <div class="section-content"><div id="grid-hot" class="menu-grid"></div></div>
 
@@ -141,7 +126,6 @@
                 </div>
                 <button onclick="saveRev()" style="width:100%; margin-top:5px; padding:10px; background:green; color:white; border:none; border-radius:5px;">Save (+)</button>
             </div>
-
             <div style="background:#fff; padding:10px; border-radius:10px; margin-top:10px; border:1px dashed red;">
                 <p style="font-weight:bold; color:red; font-size:0.8rem; margin:0 0 5px 0;">ወጭወች (Expenses)</p>
                 <div style="display:flex; gap:5px;">
@@ -153,9 +137,7 @@
         </div>
 
         <button class="accordion" style="color:green; border-color:green;">የገቡ ነገሮች (Add Stock)</button>
-        <div class="panel">
-            <div id="restock-container" style="padding-top:10px;"></div>
-        </div>
+        <div class="panel"><div id="restock-container" style="padding-top:10px;"></div></div>
         
         <button class="accordion">Sales Report (Description | Qty | Total)</button>
         <div class="panel">
@@ -189,7 +171,7 @@
 </div>
 
 <div id="qty-modal" class="modal">
-    <div class="modal-content" style="background:white; padding:20px; border-radius:15px; text-align:center;">
+    <div class="modal-content">
         <h3 id="m-item">Item</h3>
         <input type="number" id="m-qty" value="1" style="font-size:2rem; width:100px; text-align:center; margin:15px;">
         <div style="display:flex; gap:10px;">
@@ -223,53 +205,32 @@
         { n: 'እንቁላል ቅቅል', p: 30, c: 'add' }
     ];
 
-    const INVENTORY_ITEMS = [
-        "ውሃ ግማሽ", "ውሃ 1 ሊትር", "ውሃ 2 ሊትር", "ለስላሳ", "እንጀራ", "ዳቦ",
-        "እንቁላል", "የጥብስ ስጋ", "የዱለት ስጋ", "የቋንጣ ስጋ", "ፓስታ በፐርሰንት", "ቡና በፐርሰንት"
-    ];
-
+    const INVENTORY_ITEMS = [ "ውሃ ግማሽ", "ውሃ 1 ሊትር", "ውሃ 2 ሊትር", "ለስላሳ", "እንጀራ", "ዳቦ", "እንቁላል", "የጥብስ ስጋ", "የዱለት ስጋ", "የቋንጣ ስጋ", "ፓስታ በፐርሰንት", "ቡና በፐርሰንት" ];
     const FOOD_SET = new Set(MENU.filter(i => i.c === 'fasting' || i.c === 'nonfast').map(i => i.n));
 
-    // --- FORMULA ENGINE ---
     const RECIPES = {
         'ቡና': [{ i: 'ቡና በፐርሰንት', q: 1/96 }],
-        'ውሃ ግማሽ': [{ i: 'ውሃ ግማሽ', q: 1 }],
-        'ውሃ 1 ሊትር': [{ i: 'ውሃ 1 ሊትር', q: 1 }],
-        'ውሃ 2 ሊትር': [{ i: 'ውሃ 2 ሊትር', q: 1 }],
-        'ለስላሳ': [{ i: 'ለስላሳ', q: 1 }],
-        'ፓስታ በስጎ': [{ i: 'ፓስታ በፐርሰንት', q: 1/5 }],
-        'ፓስታ በስጋ': [{ i: 'ፓስታ በፐርሰንት', q: 1/5 }],
-        'ፓስታ በአትክልት': [{ i: 'ፓስታ በፐርሰንት', q: 1/6 }],
-        'ሃፍ ሃፍ': [{ i: 'ፓስታ በፐርሰንት', q: 1/12 }],
-        'ፓስታ በ እንቁላል': [{ i: 'ፓስታ በፐርሰንት', q: 1/5 }, { i: 'እንቁላል', q: 2 }],
-        'እንቁላል በስጋ': [{ i: 'የጥብስ ስጋ', q: 1/10 }, { i: 'እንቁላል', q: 2 }],
-        'እንቁላል ሳንድዊች': [{ i: 'እንቁላል', q: 2 }],
-        'እንቁላል ፍርፍር': [{ i: 'እንቁላል', q: 2 }],
-        'እንቁላል ቅቅል': [{ i: 'እንቁላል', q: 1 }],
-        'ቋንጣ ፍርፍር': [{ i: 'የቋንጣ ስጋ', q: 1/6 }],
-        'ጥብስ': [{ i: 'የጥብስ ስጋ', q: 1/7 }],
-        'ጥብስ ፍርፍር': [{ i: 'የጥብስ ስጋ', q: 1/7 }],
-        'ስጋ ፍርፍር': [{ i: 'የጥብስ ስጋ', q: 1/10 }]
+        'ውሃ ግማሽ': [{ i: 'ውሃ ግማሽ', q: 1 }], 'ውሃ 1 ሊትር': [{ i: 'ውሃ 1 ሊትር', q: 1 }], 'ውሃ 2 ሊትር': [{ i: 'ውሃ 2 ሊትር', q: 1 }],
+        'ለስላሳ': [{ i: 'ለስላሳ', q: 1 }], 'ፓስታ በስጎ': [{ i: 'ፓስታ በፐርሰንት', q: 1/5 }],
+        'ፓስታ በስጋ': [{ i: 'ፓስታ በፐርሰንት', q: 1/5 }], 'ፓስታ በአትክልት': [{ i: 'ፓስታ በፐርሰንት', q: 1/6 }],
+        'ሃፍ ሃፍ': [{ i: 'ፓስታ በፐርሰንት', q: 1/12 }], 'ፓስታ በ እንቁላል': [{ i: 'ፓስታ በፐርሰንት', q: 1/5 }, { i: 'እንቁላል', q: 2 }],
+        'እንቁላል በስጋ': [{ i: 'የጥብስ ስጋ', q: 1/10 }, { i: 'እንቁላል', q: 2 }], 'እንቁላል ሳንድዊች': [{ i: 'እንቁላል', q: 2 }],
+        'እንቁላል ፍርፍር': [{ i: 'እንቁላል', q: 2 }], 'እንቁላል ቅቅል': [{ i: 'እንቁላል', q: 1 }],
+        'ቋንጣ ፍርፍር': [{ i: 'የቋንጣ ስጋ', q: 1/6 }], 'ጥብስ': [{ i: 'የጥብስ ስጋ', q: 1/7 }],
+        'ጥብስ ፍርፍር': [{ i: 'የጥብስ ስጋ', q: 1/7 }], 'ስጋ ፍርፍር': [{ i: 'የጥብስ ስጋ', q: 1/10 }]
     };
 
-    let sel = null, isAdmin = false;
-    let dailyListener = null, monthlyListener = null;
-    let stockState = {};
+    let sel = null, isAdmin = false, dailyListener = null, monthlyListener = null, stockState = {};
 
     window.onload = () => {
         document.getElementById('work-date').value = new Date().toISOString().split('T')[0];
         document.getElementById('work-date').onchange = sync;
-        setupAccordions();
-        renderMenu();
-        renderRestockInputs();
+        setupAccordions(); renderMenu(); renderRestockInputs();
         auth.onAuthStateChanged(user => {
             isAdmin = (user && user.uid === adminUID);
-            
-            // --- SHOW/HIDE ADMIN ONLY MONTHLY NET ---
             document.getElementById('admin-month-card').style.display = isAdmin ? 'block' : 'none';
             document.getElementById('auth-btn').innerText = isAdmin ? "Logout Admin" : "Admin Login";
             document.getElementById('print-btn').style.display = isAdmin ? 'block' : 'none';
-            
             sync();
         });
     };
@@ -280,13 +241,8 @@
             acc[i].addEventListener("click", function() {
                 this.classList.toggle("active");
                 const panel = this.nextElementSibling;
-                if (panel.style.maxHeight) {
-                    panel.style.maxHeight = null;
-                    panel.classList.remove('show');
-                } else {
-                    panel.classList.add('show');
-                    panel.style.maxHeight = panel.scrollHeight + "px";
-                }
+                if (panel.style.maxHeight) { panel.style.maxHeight = null; panel.classList.remove('show'); } 
+                else { panel.classList.add('show'); panel.style.maxHeight = panel.scrollHeight + "px"; }
             });
         }
     }
@@ -306,45 +262,32 @@
         INVENTORY_ITEMS.forEach((name, idx) => {
             const row = document.createElement('div');
             row.className = 'inv-row';
-            row.innerHTML = `
-                <span class="inv-name">${name}</span>
-                <input type="number" id="inv-in-${idx}" class="inv-in" placeholder="+ Add">
-                <button class="inv-btn" id="inv-btn-${idx}" onclick="addRestock('${name}', 'inv-in-${idx}', 'inv-btn-${idx}')">Add</button>
-            `;
+            row.innerHTML = `<span class="inv-name">${name}</span><input type="number" id="inv-in-${idx}" class="inv-in" placeholder="+ Add"><button class="inv-btn" id="inv-btn-${idx}" onclick="addRestock('${name}', 'inv-in-${idx}', 'inv-btn-${idx}')">Add</button>`;
             container.appendChild(row);
         });
     }
 
     async function addRestock(itemName, inputId, btnId) {
-        const qty = parseFloat(document.getElementById(inputId).value);
-        if(!qty) return;
-        const btn = document.getElementById(btnId);
-        btn.innerText = '...';
-        await db.collection('transactions').add({ 
-            n: `Restock: ${itemName}`, q: qty, p: 0, d: document.getElementById('work-date').value, 
-            ex: false, type: 'restock', itemRef: itemName, ts: Date.now() 
-        });
-        btn.innerText = 'Added'; 
-        setTimeout(() => { btn.innerText = 'Add'; document.getElementById(inputId).value = ''; }, 1000);
+        const qty = parseFloat(document.getElementById(inputId).value); if(!qty) return;
+        const btn = document.getElementById(btnId); btn.innerText = '...';
+        await db.collection('transactions').add({ n: `Restock: ${itemName}`, q: qty, p: 0, d: document.getElementById('work-date').value, ex: false, type: 'restock', itemRef: itemName, ts: Date.now() });
+        btn.innerText = 'Added'; setTimeout(() => { btn.innerText = 'Add'; document.getElementById(inputId).value = ''; }, 1000);
     }
 
     async function confirmSale() {
-        const q = parseInt(document.getElementById('m-qty').value);
-        if(!q) return;
+        const q = parseInt(document.getElementById('m-qty').value); if(!q) return;
         await db.collection('transactions').add({ n: sel.n, q: q, p: sel.p * q, d: document.getElementById('work-date').value, ex: false, ts: Date.now() });
         closeModal();
     }
 
     async function saveEx() {
-        const n = document.getElementById('ex-name').value, p = parseFloat(document.getElementById('ex-amt').value);
-        if(!n || !p) return;
+        const n = document.getElementById('ex-name').value, p = parseFloat(document.getElementById('ex-amt').value); if(!n || !p) return;
         await db.collection('transactions').add({ n: "OUT: " + n, q: 1, p: p, d: document.getElementById('work-date').value, ex: true, ts: Date.now() });
         document.getElementById('ex-name').value = ''; document.getElementById('ex-amt').value = '';
     }
 
     async function saveRev() {
-        const n = document.getElementById('rev-name').value, p = parseFloat(document.getElementById('rev-amt').value);
-        if(!n || !p) return;
+        const n = document.getElementById('rev-name').value, p = parseFloat(document.getElementById('rev-amt').value); if(!n || !p) return;
         await db.collection('transactions').add({ n: "IN: " + n, q: 1, p: p, d: document.getElementById('work-date').value, ex: false, ts: Date.now() });
         document.getElementById('rev-name').value = ''; document.getElementById('rev-amt').value = '';
     }
@@ -354,21 +297,15 @@
         if(dailyListener) dailyListener();
         if(monthlyListener) monthlyListener();
 
-        stockState = {};
-        INVENTORY_ITEMS.forEach(i => stockState[i] = { yest: 0, added: 0, used: 0 });
+        stockState = {}; INVENTORY_ITEMS.forEach(i => stockState[i] = { yest: 0, added: 0, used: 0 });
 
         const dObj = new Date(date); dObj.setDate(dObj.getDate() - 1);
         const yestStr = dObj.toISOString().split('T')[0];
         const yestSnap = await db.collection('inventory').where('d', '==', yestStr).get();
-        yestSnap.forEach(doc => {
-            const d = doc.data();
-            if(stockState[d.n]) stockState[d.n].yest = parseFloat(d.left);
-        });
+        yestSnap.forEach(doc => { const d = doc.data(); if(stockState[d.n]) stockState[d.n].yest = parseFloat(d.left); });
 
         dailyListener = db.collection('transactions').where('d', '==', date).onSnapshot(snap => {
             let s=0, e=0, foodPlates=0, bunaQty=0, html='';
-            
-            // Aggregation Map
             let reportMap = {};
 
             INVENTORY_ITEMS.forEach(i => { stockState[i].added = 0; stockState[i].used = 0; });
@@ -380,30 +317,25 @@
                     if (!t.ex) {
                         if (FOOD_SET.has(t.n)) foodPlates += t.q;
                         if (t.n === 'ቡና') bunaQty += t.q;
-                        
                         if(RECIPES[t.n]) {
-                            RECIPES[t.n].forEach(instruction => {
-                                if(stockState[instruction.i]) {
-                                    stockState[instruction.i].used += (instruction.q * t.q);
-                                }
-                            });
+                            RECIPES[t.n].forEach(instruction => { if(stockState[instruction.i]) stockState[instruction.i].used += (instruction.q * t.q); });
                         }
                     }
-                } else {
-                    if(stockState[t.itemRef]) stockState[t.itemRef].added += t.q;
-                }
+                } else { if(stockState[t.itemRef]) stockState[t.itemRef].added += t.q; }
 
-                // Add to Map for HTML Display
                 const color = t.ex ? 'red' : (t.n.startsWith('IN:') ? 'green' : (t.type=='restock'?'blue':'black'));
-                if(!reportMap[t.n]) reportMap[t.n] = { q:0, p:0, c: color };
+                if(!reportMap[t.n]) {
+                    const isMenu = MENU.some(m => m.n === t.n);
+                    reportMap[t.n] = { q:0, p:0, c: color, isMenu: isMenu };
+                }
                 reportMap[t.n].q += t.q;
                 reportMap[t.n].p += t.p;
             });
 
-            // Generate HTML from Map
             Object.keys(reportMap).sort().forEach(itemName => {
                 const item = reportMap[itemName];
-                html += `<tr><td style="color:${item.c};">${itemName}</td><td>${item.q}</td><td>${item.p}</td><td class="no-print"></td></tr>`;
+                let editBtn = (isAdmin && item.isMenu) ? `<button onclick="adjustItemTotal('${itemName}', ${item.q})" style="padding:2px 8px; cursor:pointer;">✏️</button>` : '';
+                html += `<tr><td style="color:${item.c};">${itemName}</td><td>${item.q}</td><td>${item.p}</td><td class="no-print">${editBtn}</td></tr>`;
             });
 
             document.getElementById('log-body').innerHTML = html;
@@ -417,33 +349,47 @@
             document.getElementById('daily-incentive').innerText = (dailyFoodInc + dailyBunaInc).toFixed(2);
             document.getElementById('d-inc-food').innerText = dailyFoodInc.toFixed(1);
             document.getElementById('d-inc-buna').innerText = dailyBunaInc.toFixed(1);
-
             renderInventoryTable();
         });
 
         const year = date.split('-')[0], month = date.split('-')[1];
-        monthlyListener = db.collection('transactions')
-            .where('d', '>=', `${year}-${month}-01`).where('d', '<=', date)
-            .onSnapshot(snap => {
-                let mNet = 0, dStats = {};
-                snap.forEach(doc => {
-                    const t = doc.data();
-                    if(t.type === 'restock') return;
-                    if(t.ex) mNet -= t.p; else mNet += t.p;
-                    if(!t.ex) {
-                        if(!dStats[t.d]) dStats[t.d] = { f:0, b:0 };
-                        if(FOOD_SET.has(t.n)) dStats[t.d].f += t.q;
-                        if(t.n === 'ቡና') dStats[t.d].b += t.q;
-                    }
-                });
-                let mInc = 0;
-                for(let k in dStats) {
-                    if(dStats[k].f > 25) mInc += (dStats[k].f - 25)*7.3;
-                    if(dStats[k].b > 45) mInc += (dStats[k].b - 45)*4.1;
+        monthlyListener = db.collection('transactions').where('d', '>=', `${year}-${month}-01`).where('d', '<=', date).onSnapshot(snap => {
+            let mNet = 0, dStats = {};
+            snap.forEach(doc => {
+                const t = doc.data(); if(t.type === 'restock') return;
+                if(t.ex) mNet -= t.p; else mNet += t.p;
+                if(!t.ex) {
+                    if(!dStats[t.d]) dStats[t.d] = { f:0, b:0 };
+                    if(FOOD_SET.has(t.n)) dStats[t.d].f += t.q;
+                    if(t.n === 'ቡና') dStats[t.d].b += t.q;
                 }
-                document.getElementById('month-n').innerText = mNet.toLocaleString() + " ETB";
-                document.getElementById('month-incentive').innerText = mInc.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) + " ETB";
             });
+            let mInc = 0;
+            for(let k in dStats) {
+                if(dStats[k].f > 25) mInc += (dStats[k].f - 25)*7.3;
+                if(dStats[k].b > 45) mInc += (dStats[k].b - 45)*4.1;
+            }
+            document.getElementById('month-n').innerText = mNet.toLocaleString() + " ETB";
+            document.getElementById('month-incentive').innerText = mInc.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) + " ETB";
+        });
+    }
+
+    async function adjustItemTotal(itemName, currentQty) {
+        let newQty = prompt(`Correction for ${itemName}:\nChange current total (${currentQty}) to:`, currentQty);
+        if (newQty === null) return;
+        newQty = parseInt(newQty);
+        if (isNaN(newQty)) return alert("Enter a number.");
+        if (newQty === currentQty) return;
+
+        const diff = newQty - currentQty;
+        const menuObj = MENU.find(m => m.n === itemName);
+        const unitPrice = menuObj ? menuObj.p : 0;
+
+        await db.collection('transactions').add({
+            n: itemName, q: diff, p: diff * unitPrice,
+            d: document.getElementById('work-date').value,
+            ex: false, ts: Date.now(), note: 'Admin Edit'
+        });
     }
 
     function renderInventoryTable() {
@@ -451,11 +397,8 @@
         INVENTORY_ITEMS.forEach(name => {
             const i = stockState[name];
             const current = (i.yest + i.added - i.used);
-            const dispCurr = Number(current.toFixed(2));
-            const dispUsed = Number(i.used.toFixed(2));
-            
-            html += `<tr><td>${name}</td><td>${i.yest}</td><td style="color:green; font-weight:bold;">+${i.added}</td><td style="color:red;">-${dispUsed}</td><td class="stock-curr">${dispCurr}</td></tr>`;
-            printHtml += `<tr><td>${name}</td><td>${(i.yest + i.added).toFixed(2)}</td><td>${dispUsed}</td><td style="font-weight:bold;">${dispCurr}</td></tr>`;
+            html += `<tr><td>${name}</td><td>${i.yest}</td><td style="color:green;">+${i.added}</td><td style="color:red;">-${i.used.toFixed(2)}</td><td class="stock-curr">${current.toFixed(2)}</td></tr>`;
+            printHtml += `<tr><td>${name}</td><td>${(i.yest + i.added).toFixed(2)}</td><td>${i.used.toFixed(2)}</td><td>${current.toFixed(2)}</td></tr>`;
         });
         document.getElementById('live-inv-body').innerHTML = html;
         document.getElementById('print-inv-body').innerHTML = printHtml;
@@ -464,7 +407,7 @@
     function initiateFinalize() {
         document.getElementById('pdf-date').innerText = "DATE: " + document.getElementById('work-date').value;
         window.print();
-        setTimeout(() => { if(confirm("Report Saved? This will: \n1. Save current Stock levels for tomorrow.\n2. Clear today's sales.\n\nProceed?")) finalizeDay(); }, 1500);
+        setTimeout(() => { if(confirm("Report Saved? Proceeding will clear today's transactions and save stock levels.")) finalizeDay(); }, 1500);
     }
 
     async function finalizeDay() {
@@ -479,11 +422,9 @@
         const tSnap = await db.collection('transactions').where('d', '==', date).get();
         tSnap.forEach(d => batch.delete(d.ref));
         await batch.commit();
-        alert("Day Finalized. Inventory Saved. Sales Cleared.");
-        location.reload();
+        alert("Day Finalized."); location.reload();
     }
 
-    async function delDoc(id) { if(confirm("Delete Record?")) await db.collection('transactions').doc(id).delete(); }
     async function handleAuth() {
         if(auth.currentUser) { auth.signOut(); } 
         else {
