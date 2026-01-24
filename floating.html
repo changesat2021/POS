@@ -21,13 +21,26 @@
     .val { font-size: 1.1rem; font-weight: 800; display: block; }
     .lbl { font-size: 0.7rem; color: #888; text-transform: uppercase; font-weight:bold; }
     
-    /* SECTION HEADERS (No longer dropdowns) */
+    /* STATIC HEADERS (For Menu Items) */
     .section-header {
         background-color: #fff; color: var(--primary); padding: 12px 5px; width: 100%; 
         text-align: left; font-size: 1.1rem; font-weight: bold; border-bottom: 2px solid #ddd;
         margin-top: 20px; display:block;
     }
     .section-content { display: block; margin-bottom: 10px; }
+
+    /* COLLAPSIBLE ACCORDION (For Stock, Inventory, Report) */
+    .accordion {
+        background-color: #e8e8e8; color: #333; cursor: pointer; padding: 15px; width: 100%; border: none;
+        text-align: left; outline: none; font-size: 1rem; transition: 0.4s; border-radius: 8px; margin-top: 15px;
+        font-weight: bold; display: flex; justify-content: space-between; align-items: center; border: 1px solid #ccc;
+    }
+    .accordion.active, .accordion:hover { background-color: #dcdcdc; }
+    .accordion:after { content: '\002B'; font-weight: bold; font-size: 1.2rem; }
+    .accordion.active:after { content: "\2212"; }
+    
+    .panel { padding: 0 10px; background-color: white; max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; margin-bottom: 5px; border-radius: 0 0 8px 8px; }
+    .panel.show { padding-top: 10px; padding-bottom: 10px; border: 1px solid #ccc; border-top: none; }
 
     /* Menu Grid */
     .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
@@ -52,7 +65,9 @@
     @media print {
         .no-print { display: none !important; }
         .print-only { display: block !important; }
-        .section-header { border:none; padding:0; margin: 10px 0; font-size: 14px; text-decoration: underline; }
+        .section-header, .accordion { border:none; padding:0; margin: 10px 0; font-size: 14px; text-decoration: underline; pointer-events: none; }
+        .accordion:after { content: none; }
+        .panel { max-height: none !important; display: block; border: none; }
         body { background: white; }
         .container { max-width: 100%; padding: 0; }
         .card { border: none; }
@@ -137,26 +152,26 @@
             </div>
         </div>
 
-        <div class="section-header" style="color:green; border-color:green;">የገቡ ነገሮች (Add Stock)</div>
-        <div class="section-content">
+        <button class="accordion" style="color:green; border-color:green;">የገቡ ነገሮች (Add Stock)</button>
+        <div class="panel">
             <div id="restock-container" style="padding-top:10px;"></div>
         </div>
+        
+        <button class="accordion">Sales Report (Description | Qty | Total)</button>
+        <div class="panel">
+            <table style="width:100%; margin-top:10px;">
+                <thead><tr><th>Description</th><th>Qty</th><th>Total</th><th class="no-print"></th></tr></thead>
+                <tbody id="log-body"></tbody>
+            </table>
+        </div>
 
-        <div class="section-header" style="background:#333; color:white; padding:10px;">መኖር ያለባቸው ነገሮች (Inventory)</div>
-        <div class="section-content" style="display:block;"> 
-            <table class="inv-table">
+        <button class="accordion" style="background:#333; color:white;">መኖር ያለባቸው ነገሮች (Inventory)</button>
+        <div class="panel"> 
+            <table class="inv-table" style="margin-top:10px;">
                 <thead><tr><th>Item</th><th>Yest.</th><th>Added</th><th>Sold</th><th>LEFT</th></tr></thead>
                 <tbody id="live-inv-body"></tbody>
             </table>
         </div>
-    </div>
-
-    <div class="card" style="padding:0; margin-top:30px; overflow:hidden;">
-        <h4 class="print-only" style="padding:10px; background:#f4f4f4; margin:0;">Sales Report</h4>
-        <table>
-            <thead><tr><th>Description</th><th>Qty</th><th>Total</th><th class="no-print"></th></tr></thead>
-            <tbody id="log-body"></tbody>
-        </table>
     </div>
 
     <div class="print-only card" style="padding:0; margin-top:20px; overflow:hidden; border:1px solid #000;">
@@ -244,6 +259,7 @@
     window.onload = () => {
         document.getElementById('work-date').value = new Date().toISOString().split('T')[0];
         document.getElementById('work-date').onchange = sync;
+        setupAccordions();
         renderMenu();
         renderRestockInputs();
         auth.onAuthStateChanged(user => {
@@ -257,6 +273,23 @@
             sync();
         });
     };
+
+    function setupAccordions() {
+        const acc = document.getElementsByClassName("accordion");
+        for (let i = 0; i < acc.length; i++) {
+            acc[i].addEventListener("click", function() {
+                this.classList.toggle("active");
+                const panel = this.nextElementSibling;
+                if (panel.style.maxHeight) {
+                    panel.style.maxHeight = null;
+                    panel.classList.remove('show');
+                } else {
+                    panel.classList.add('show');
+                    panel.style.maxHeight = panel.scrollHeight + "px";
+                }
+            });
+        }
+    }
 
     function renderMenu() {
         MENU.forEach(i => {
