@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Bean & Bloom POS - Smart Inventory</title>
+<title>Bean & Bloom POS - Amharic</title>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -14,41 +14,56 @@
     .container { max-width: 650px; margin: 0 auto; padding: 15px; }
     
     header { display: flex; justify-content: space-between; align-items: center; background: var(--white); padding: 12px; border-radius: var(--radius); margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    
+    /* Stats Cards */
     .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
     .card { background: var(--white); padding: 12px; border-radius: var(--radius); text-align: center; border: 1px solid #eee; }
     .val { font-size: 1.1rem; font-weight: 800; display: block; }
-    .lbl { font-size: 0.65rem; color: #888; text-transform: uppercase; }
+    .lbl { font-size: 0.7rem; color: #888; text-transform: uppercase; font-weight:bold; }
     
-    /* Menu & Inputs */
-    .section-title { font-size: 0.8rem; font-weight: bold; margin: 15px 0 8px; color: var(--primary); border-bottom: 1px solid #ddd; padding-bottom: 3px; }
-    .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    /* ACCORDION / DROPDOWN STYLES */
+    .accordion {
+        background-color: white; color: var(--primary); cursor: pointer; padding: 15px; width: 100%; border: none;
+        text-align: left; outline: none; font-size: 0.95rem; transition: 0.4s; border-radius: 10px; margin-bottom: 5px;
+        font-weight: bold; display: flex; justify-content: space-between; align-items: center; border: 1px solid #ddd;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .accordion.active, .accordion:hover { background-color: #f9f9f9; }
+    .accordion:after { content: '\002B'; font-size: 1.2rem; color: #777; margin-left: 5px; }
+    .accordion.active:after { content: "\2212"; } /* Minus sign */
+    .panel { padding: 0 15px; background-color: white; max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; margin-bottom: 10px; border-radius: 0 0 10px 10px; }
+    .panel.show { border-bottom: 1px solid #ddd; padding-bottom: 15px; max-height: 1000px; /* Arbitrary large height */ }
+
+    /* Menu Grid */
+    .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
     .menu-btn { background: var(--white); border: 1px solid #ddd; padding: 12px; border-radius: var(--radius); text-align: center; cursor: pointer; border-left: 4px solid var(--primary); }
     .food-btn { border-left-color: var(--food); }
     .add-btn { border-left-color: #7f8c8d; }
 
-    /* Restock Inputs */
+    /* Inventory & Inputs */
     .inv-row { display: flex; justify-content: space-between; align-items: center; background: white; padding: 8px; margin-bottom: 5px; border-radius: 5px; border: 1px solid #eee; }
     .inv-name { font-size: 0.9rem; font-weight: bold; flex: 2; color: #333; }
     .inv-in { width: 70px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; text-align: center; margin-right: 8px; font-size: 1rem; border-color:green;}
     .inv-btn { background: green; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
 
-    /* Dashboard Table */
+    /* Tables */
     table { width: 100%; border-collapse: collapse; background: white; font-size: 0.85rem; }
     th, td { padding: 8px; text-align: left; border-bottom: 1px solid #eee; }
-    .print-only { display: none; }
-    
-    /* Inventory Dashboard Table */
     .inv-table th { background: #eee; font-size: 0.75rem; }
     .inv-table td { font-size: 0.8rem; }
     .stock-curr { font-weight: bold; color: var(--accent); }
 
+    .print-only { display: none; }
     @media print {
         .no-print { display: none !important; }
         .print-only { display: block !important; }
+        .accordion { border:none; padding:0; margin: 10px 0; pointer-events: none; }
+        .accordion:after { content: none; }
+        .panel { max-height: none !important; display: block; padding:0; border:none; }
         body { background: white; }
         .container { max-width: 100%; padding: 0; }
         .card { border: none; }
-        .inv-row { display: none; }
+        #live-inv-body { font-size: 10px; }
     }
 
     .admin-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #ddd; display: flex; justify-content: space-around; }
@@ -62,7 +77,6 @@
         <h1 style="margin:0;">BEAN & BLOOM COFFEEHOUSE</h1>
         <p id="pdf-date" style="font-weight:bold;"></p>
         <hr>
-        <h3>DAILY REPORT & INVENTORY</h3>
     </div>
 
     <header class="no-print">
@@ -71,61 +85,74 @@
     </header>
 
     <div class="dashboard">
-        <div class="card"><span class="lbl">Sales</span><span class="val" id="total-s" style="color:green">0</span></div>
-        <div class="card"><span class="lbl">Expenses</span><span class="val" id="total-e" style="color:red">0</span></div>
+        <div class="card"><span class="lbl">የተሸጠው ብር</span><span class="val" id="total-s" style="color:green">0</span></div>
+        <div class="card"><span class="lbl">ወጭወች</span><span class="val" id="total-e" style="color:red">0</span></div>
         <div class="card" style="background:var(--accent); color:white"><span class="lbl" style="color:#aaa">Net Cash</span><span class="val" id="total-n">0</span></div>
-        <div class="card" style="border-color:var(--food);"><span class="lbl" style="color:var(--food)">Food Plates</span><span class="val" id="total-plates" style="color:var(--food)">0</span></div>
+        <div class="card" style="border-color:var(--food);"><span class="lbl" style="color:var(--food)">Plates</span><span class="val" id="total-plates" style="color:var(--food)">0</span></div>
         
         <div class="card" style="grid-column: span 2; background: #2c3e50; border: 2px solid var(--gold); margin-top:5px;">
-            <span class="lbl" style="color:var(--gold); font-weight:bold;">MONTHLY CUMULATIVE NET</span>
+            <span class="lbl" style="color:var(--gold);">ወርሃዊ ገቢ (Net)</span>
             <span class="val" id="month-n" style="color:var(--gold); font-size:1.4rem;">...</span>
         </div>
         
         <div class="card" style="border: 1px dashed var(--incentive); background: #fdfdfd;">
-            <span class="lbl" style="color:var(--incentive);">Daily Staff Incentive</span>
+            <span class="lbl" style="color:var(--incentive);">የቀኑ የሰራተኛ ጉርሻ</span>
             <span class="val" id="daily-incentive" style="color:var(--incentive);">0.00</span>
             <div style="font-size:0.65rem; color:#666;">F>25: <b id="d-inc-food">0</b> | B>45: <b id="d-inc-buna">0</b></div>
         </div>
         <div class="card" style="border: 2px solid var(--incentive); background: #ebf5fb;">
-            <span class="lbl" style="color:var(--incentive); font-weight:bold;">MONTHLY TOTAL INC.</span>
+            <span class="lbl" style="color:var(--incentive);">ወርሃዊ የሰራተኛ ጉርሻ</span>
             <span class="val" id="month-incentive" style="color:var(--incentive); font-size:1.4rem;">0.00</span>
         </div>
     </div>
 
     <div class="no-print">
-        <div class="card" style="padding:0; margin-bottom:20px; text-align:left; border:2px solid #333;">
-            <h4 style="padding:10px; background:#333; color:white; margin:0;">📊 Live Inventory Dashboard</h4>
-            <table class="inv-table">
+        <button class="accordion" style="background:#333; color:white;">መኖር ያለባቸው ነገሮች (Inventory)</button>
+        <div class="panel" style="display:block; max-height:1000px;"> <table class="inv-table">
                 <thead><tr><th>Item</th><th>Yest.</th><th>Added</th><th>Sold</th><th>LEFT</th></tr></thead>
                 <tbody id="live-inv-body"></tbody>
             </table>
         </div>
 
-        <div class="section-title">Hot & Cold Drinks</div><div id="grid-hot" class="menu-grid"></div>
-        <div class="section-title">Special Juices</div><div id="grid-juices" class="menu-grid"></div>
-        <div class="section-title">Fasting Food</div><div id="grid-fasting" class="menu-grid"></div>
-        <div class="section-title">Non-Fasting Food</div><div id="grid-nonfast" class="menu-grid"></div>
-        <div class="section-title">Additives & Snacks</div><div id="grid-add" class="menu-grid"></div>
+        <button class="accordion">ትኩስና ቀዝቃዛ መጠጦች</button>
+        <div class="panel"><div id="grid-hot" class="menu-grid"></div></div>
 
-        <div class="section-title" style="color:green; margin-top:30px; border-color:green;">Add Purchases / Restock (Morning/Daily)</div>
-        <div id="restock-container"></div>
+        <button class="accordion">ጁሶች</button>
+        <div class="panel"><div id="grid-juices" class="menu-grid"></div></div>
 
-        <div style="background:#fff; padding:15px; border-radius:10px; margin-top:20px; border:1px dashed green;">
-            <p style="font-weight:bold; color:green; font-size:0.7rem; margin:0 0 5px 0;">ADD EXTRA INCOME</p>
-            <div style="display:flex; gap:5px;">
-                <input type="text" id="rev-name" placeholder="Source..." style="flex:2; padding:8px;">
-                <input type="number" id="rev-amt" placeholder="Amt" style="flex:1; padding:8px;">
-            </div>
-            <button onclick="saveRev()" style="width:100%; margin-top:5px; padding:10px; background:green; color:white; border:none; border-radius:5px;">Save (+)</button>
+        <button class="accordion">የፆም ምግቦች</button>
+        <div class="panel"><div id="grid-fasting" class="menu-grid"></div></div>
+
+        <button class="accordion">የፍስክ ምግቦች</button>
+        <div class="panel"><div id="grid-nonfast" class="menu-grid"></div></div>
+
+        <button class="accordion">ተጨማሪ ነገሮች</button>
+        <div class="panel"><div id="grid-add" class="menu-grid"></div></div>
+
+        <button class="accordion" style="color:green; border-color:green;">የገቡ ነገሮች (Add Stock)</button>
+        <div class="panel">
+            <div id="restock-container" style="padding-top:10px;"></div>
         </div>
 
-        <div style="background:#fff; padding:15px; border-radius:10px; margin-top:10px; border:1px dashed red;">
-            <p style="font-weight:bold; color:red; font-size:0.7rem; margin:0 0 5px 0;">ADD PAYOUT/EXPENSE</p>
-            <div style="display:flex; gap:5px;">
-                <input type="text" id="ex-name" placeholder="Reason..." style="flex:2; padding:8px;">
-                <input type="number" id="ex-amt" placeholder="Amt" style="flex:1; padding:8px;">
+        <button class="accordion">ተጨማሪ ገቢ & ወጭወች</button>
+        <div class="panel">
+            <div style="background:#fff; padding:10px; border-radius:10px; margin-top:10px; border:1px dashed green;">
+                <p style="font-weight:bold; color:green; font-size:0.8rem; margin:0 0 5px 0;">ተጨማሪ ገቢ (Income)</p>
+                <div style="display:flex; gap:5px;">
+                    <input type="text" id="rev-name" placeholder="Source..." style="flex:2; padding:8px;">
+                    <input type="number" id="rev-amt" placeholder="Amt" style="flex:1; padding:8px;">
+                </div>
+                <button onclick="saveRev()" style="width:100%; margin-top:5px; padding:10px; background:green; color:white; border:none; border-radius:5px;">Save (+)</button>
             </div>
-            <button onclick="saveEx()" style="width:100%; margin-top:5px; padding:10px; background:red; color:white; border:none; border-radius:5px;">Save (-)</button>
+
+            <div style="background:#fff; padding:10px; border-radius:10px; margin-top:10px; border:1px dashed red;">
+                <p style="font-weight:bold; color:red; font-size:0.8rem; margin:0 0 5px 0;">ወጭወች (Expenses)</p>
+                <div style="display:flex; gap:5px;">
+                    <input type="text" id="ex-name" placeholder="Reason..." style="flex:2; padding:8px;">
+                    <input type="number" id="ex-amt" placeholder="Amt" style="flex:1; padding:8px;">
+                </div>
+                <button onclick="saveEx()" style="width:100%; margin-top:5px; padding:10px; background:red; color:white; border:none; border-radius:5px;">Save (-)</button>
+            </div>
         </div>
     </div>
 
@@ -176,14 +203,14 @@
     const db = firebase.firestore(), auth = firebase.auth();
     const adminUID = "Mo1oHKdvskXeuRjY8h1YFMT5vrl2";
 
-    // --- CONFIGURATION ---
     const MENU = [
         { n: 'ቡና', p: 40, c: 'hot' }, { n: 'ሻይ', p: 25, c: 'hot' }, { n: 'ለውዝ', p: 50, c: 'hot' }, { n: 'ወተት', p: 70, c: 'hot' }, { n: 'ማኪያቶ', p: 60, c: 'hot' }, { n: 'ቀሽር', p: 50, c: 'hot' }, { n: 'ስፕሪስ', p: 50, c: 'hot' },
         { n: 'ለስላሳ', p: 50, c: 'hot' }, { n: 'ውሃ 2 ሊትር', p: 40, c: 'hot' }, { n: 'ውሃ 1 ሊትር', p: 35, c: 'hot' }, { n: 'ውሃ ግማሽ', p: 25, c: 'hot' },
         { n: 'አቮካዶ ጁስ', p: 120, c: 'juices' }, { n: 'ማንጎ ጁስ', p: 120, c: 'juices' }, { n: 'ፓፓያ ጁስ', p: 120, c: 'juices' }, { n: 'ሙዝ ጁስ', p: 120, c: 'juices' }, { n: 'አናናስ', p: 120, c: 'juices' }, { n: 'ተልባ ጁስ', p: 120, c: 'juices' }, { n: 'በሶ ጁስ', p: 120, c: 'juices' }, { n: 'ወተት በአቮካዶ', p: 200, c: 'juices' }, { n: 'ስፔሻል ጁስ', p: 250, c: 'juices' },
         { n: 'ፓስታ በስጎ', p: 130, c: 'fasting' }, { n: 'ሽሮ', p: 120, c: 'fasting' }, { n: 'ተጋቢኖ', p: 130, c: 'fasting' }, { n: 'ሽሮ በሰላጣ', p: 180, c: 'fasting' }, { n: 'ሃፍ ሃፍ', p: 150, c: 'fasting' }, { n: 'ፍርፍር', p: 100, c: 'fasting' }, { n: 'ፉል ኖርማል', p: 90, c: 'fasting' }, { n: 'ፉል በአቮካዶ', p: 90, c: 'fasting' }, { n: 'ፉል በእንቁላል', p: 120, c: 'fasting' }, { n: 'ቲማቲም ለብለብ', p: 100, c: 'fasting' }, { n: 'በያይነት', p: 140, c: 'fasting' }, { n: 'ፎሶሊያ', p: 160, c: 'fasting' }, { n: 'አዚፋ', p: 160, c: 'fasting' }, { n: 'ቺፕስ 25', p: 25, c: 'fasting' }, { n: 'ቺፕስ 35', p: 35, c: 'fasting' }, { n: 'ቺፕስ 80', p: 80, c: 'fasting' }, { n: 'እርጥብ', p: 90, c: 'fasting' }, { n: 'እርጥብ ስፔሻል', p: 120, c: 'fasting' }, { n: 'ፓስታ በአትክልት', p: 140, c: 'fasting' }, { n: 'ሩዝ በአትክልት', p: 140, c: 'fasting' },
         { n: 'ጥብስ', p: 270, c: 'nonfast' }, { n: 'ስጋ ፍርፍር', p: 250, c: 'nonfast' }, { n: 'ፓስታ በስጋ', p: 250, c: 'nonfast' }, { n: 'ፓስታ በ እንቁላል', p: 200, c: 'nonfast' }, { n: 'እንቁላል ሳንድዊች', p: 120, c: 'nonfast' }, { n: 'ጥብስ ፍርፍር', p: 300, c: 'nonfast' }, { n: 'እንቁላል በስጋ', p: 250, c: 'nonfast' }, { n: 'እንቁላል ፍርፍር', p: 140, c: 'nonfast' }, { n: 'ቋንጣ ፍርፍር', p: 300, c: 'nonfast' }, { n: 'ፉል በቅቤ', p: 140, c: 'nonfast' }, { n: 'ሽሮ በቅቤ', p: 180, c: 'nonfast' },
-        { n: 'ዳቦ', p: 15, c: 'add' }, { n: 'ግማሽ እንጀራ', p: 20, c: 'add' }, { n: 'እንጀራ', p: 35, c: 'add' }, { n: 'አምባሻ', p: 30, c: 'add' }, { n: 'ሳምቡሳ', p: 25, c: 'add' }, { n: 'ብስኩት', p: 25, c: 'add' }, { n: 'ቴካዌ ከፕ', p: 15, c: 'add' }
+        { n: 'ዳቦ', p: 15, c: 'add' }, { n: 'ግማሽ እንጀራ', p: 20, c: 'add' }, { n: 'እንጀራ', p: 35, c: 'add' }, { n: 'አምባሻ', p: 30, c: 'add' }, { n: 'ሳምቡሳ', p: 25, c: 'add' }, { n: 'ብስኩት', p: 25, c: 'add' }, { n: 'ቴካዌ ከፕ', p: 15, c: 'add' }, 
+        { n: 'እንቁላል ቅቅል', p: 30, c: 'add' } // New Item
     ];
 
     const INVENTORY_ITEMS = [
@@ -193,39 +220,51 @@
 
     const FOOD_SET = new Set(MENU.filter(i => i.c === 'fasting' || i.c === 'nonfast').map(i => i.n));
 
-    // --- LOGIC: INTERLINKING FORMULAS ---
-    // Maps Menu Item -> Inventory Ingredient + Deduction Amount
+    // --- FORMULA ENGINE ---
+    // Now supports Arrays for multiple ingredients per item
     const RECIPES = {
         // Drinks
-        'ቡና': { i: 'ቡና በፐርሰንት', q: 1/96 },
-        'ውሃ ግማሽ': { i: 'ውሃ ግማሽ', q: 1 },
-        'ውሃ 1 ሊትር': { i: 'ውሃ 1 ሊትር', q: 1 },
-        'ውሃ 2 ሊትር': { i: 'ውሃ 2 ሊትር', q: 1 },
-        'ለስላሳ': { i: 'ለስላሳ', q: 1 },
+        'ቡና': [{ i: 'ቡና በፐርሰንት', q: 1/96 }],
+        'ውሃ ግማሽ': [{ i: 'ውሃ ግማሽ', q: 1 }],
+        'ውሃ 1 ሊትር': [{ i: 'ውሃ 1 ሊትር', q: 1 }],
+        'ውሃ 2 ሊትር': [{ i: 'ውሃ 2 ሊትር', q: 1 }],
+        'ለስላሳ': [{ i: 'ለስላሳ', q: 1 }],
         
-        // Pasta Logic (Added)
-        'ፓስታ በስጎ': { i: 'ፓስታ በፐርሰንት', q: 1/5 },
-        'ፓስታ በስጋ': { i: 'ፓስታ በፐርሰንት', q: 1/5 },
-        'ፓስታ በ እንቁላል': { i: 'ፓስታ በፐርሰንት', q: 1/5 },
-        'ፓስታ በአትክልት': { i: 'ፓስታ በፐርሰንት', q: 1/6 },
-        'ሃፍ ሃፍ': { i: 'ፓስታ በፐርሰንት', q: 1/12 },
+        // Pasta Logic
+        'ፓስታ በስጎ': [{ i: 'ፓስታ በፐርሰንት', q: 1/5 }],
+        'ፓስታ በስጋ': [{ i: 'ፓስታ በፐርሰንት', q: 1/5 }],
+        'ፓስታ በአትክልት': [{ i: 'ፓስታ በፐርሰንት', q: 1/6 }],
+        'ሃፍ ሃፍ': [{ i: 'ፓስታ በፐርሰንት', q: 1/12 }],
+        
+        // Items with Multiple Ingredients (Pasta + Eggs, or Meat + Eggs)
+        'ፓስታ በ እንቁላል': [
+            { i: 'ፓስታ በፐርሰንት', q: 1/5 }, 
+            { i: 'እንቁላል', q: 2 }
+        ],
+        'እንቁላል በስጋ': [
+            { i: 'የጥብስ ስጋ', q: 1/10 }, // Assuming small meat portion
+            { i: 'እንቁላል', q: 2 }
+        ],
 
         // Meat & Eggs Logic
-        'እንቁላል ሳንድዊች': { i: 'እንቁላል', q: 2 },
-        'እንቁላል ፍርፍር': { i: 'እንቁላል', q: 2 },
-        'ቋንጣ ፍርፍር': { i: 'የቋንጣ ስጋ', q: 1/6 },
-        'ጥብስ': { i: 'የጥብስ ስጋ', q: 1/7 },
-        'ጥብስ ፍርፍር': { i: 'የጥብስ ስጋ', q: 1/7 },
-        'ስጋ ፍርፍር': { i: 'የጥብስ ስጋ', q: 1/10 }
+        'እንቁላል ሳንድዊች': [{ i: 'እንቁላል', q: 2 }],
+        'እንቁላል ፍርፍር': [{ i: 'እንቁላል', q: 2 }],
+        'እንቁላል ቅቅል': [{ i: 'እንቁላል', q: 1 }], // Boiled egg = 1 egg
+        
+        'ቋንጣ ፍርፍር': [{ i: 'የቋንጣ ስጋ', q: 1/6 }],
+        'ጥብስ': [{ i: 'የጥብስ ስጋ', q: 1/7 }],
+        'ጥብስ ፍርፍር': [{ i: 'የጥብስ ስጋ', q: 1/7 }],
+        'ስጋ ፍርፍር': [{ i: 'የጥብስ ስጋ', q: 1/10 }]
     };
 
     let sel = null, isAdmin = false;
     let dailyListener = null, monthlyListener = null;
-    let stockState = {}; // Holds { 'ItemName': { yesterday: 0, added: 0, used: 0 } }
+    let stockState = {};
 
     window.onload = () => {
         document.getElementById('work-date').value = new Date().toISOString().split('T')[0];
         document.getElementById('work-date').onchange = sync;
+        setupAccordions();
         renderMenu();
         renderRestockInputs();
         auth.onAuthStateChanged(user => {
@@ -235,6 +274,23 @@
             sync();
         });
     };
+
+    function setupAccordions() {
+        const acc = document.getElementsByClassName("accordion");
+        for (let i = 0; i < acc.length; i++) {
+            acc[i].addEventListener("click", function() {
+                this.classList.toggle("active");
+                const panel = this.nextElementSibling;
+                if (panel.style.maxHeight) {
+                    panel.style.maxHeight = null;
+                    panel.classList.remove('show');
+                } else {
+                    panel.classList.add('show');
+                    panel.style.maxHeight = panel.scrollHeight + "px";
+                }
+            });
+        }
+    }
 
     function renderMenu() {
         MENU.forEach(i => {
@@ -260,23 +316,17 @@
         });
     }
 
-    // Stores "Purchases" in transactions with a special tag
     async function addRestock(itemName, inputId, btnId) {
         const qty = parseFloat(document.getElementById(inputId).value);
         if(!qty) return;
         const btn = document.getElementById(btnId);
         btn.innerText = '...';
-        try {
-            // Save as a 'restock' type transaction
-            await db.collection('transactions').add({ 
-                n: `Restock: ${itemName}`, q: qty, p: 0, d: document.getElementById('work-date').value, 
-                ex: false, type: 'restock', itemRef: itemName, ts: Date.now() 
-            });
-            btn.innerText = 'Added'; 
-            setTimeout(() => { btn.innerText = 'Add'; document.getElementById(inputId).value = ''; }, 1000);
-        } catch (error) {
-            console.error(error); alert("Error."); btn.innerText = 'Retry';
-        }
+        await db.collection('transactions').add({ 
+            n: `Restock: ${itemName}`, q: qty, p: 0, d: document.getElementById('work-date').value, 
+            ex: false, type: 'restock', itemRef: itemName, ts: Date.now() 
+        });
+        btn.innerText = 'Added'; 
+        setTimeout(() => { btn.innerText = 'Add'; document.getElementById(inputId).value = ''; }, 1000);
     }
 
     async function confirmSale() {
@@ -305,77 +355,61 @@
         if(dailyListener) dailyListener();
         if(monthlyListener) monthlyListener();
 
-        // 1. Initialize Stock State
         stockState = {};
         INVENTORY_ITEMS.forEach(i => stockState[i] = { yest: 0, added: 0, used: 0 });
 
-        // 2. Fetch Yesterday's Inventory (The "Closing Stock" of the previous day)
-        // We approximate "yesterday" by taking the date string and subtracting 1 day
         const dObj = new Date(date); dObj.setDate(dObj.getDate() - 1);
         const yestStr = dObj.toISOString().split('T')[0];
-
         const yestSnap = await db.collection('inventory').where('d', '==', yestStr).get();
         yestSnap.forEach(doc => {
             const d = doc.data();
             if(stockState[d.n]) stockState[d.n].yest = parseFloat(d.left);
         });
 
-        // 3. LISTEN TO TODAY'S TRANSACTIONS (Sales + Restocks)
         dailyListener = db.collection('transactions').where('d', '==', date).onSnapshot(snap => {
             let s=0, e=0, foodPlates=0, bunaQty=0, html='';
-            
-            // Reset Today's counts in state
             INVENTORY_ITEMS.forEach(i => { stockState[i].added = 0; stockState[i].used = 0; });
 
             snap.forEach(doc => {
                 const t = doc.data();
-
-                // Financials
                 if(t.type !== 'restock') {
                     if(t.ex) e += t.p; else s += t.p;
                     if (!t.ex) {
                         if (FOOD_SET.has(t.n)) foodPlates += t.q;
                         if (t.n === 'ቡና') bunaQty += t.q;
                         
-                        // CALCULATE INVENTORY USAGE
+                        // UPDATED FORMULA ENGINE FOR MULTIPLE INGREDIENTS
                         if(RECIPES[t.n]) {
-                            const ing = RECIPES[t.n];
-                            if(stockState[ing.i]) {
-                                stockState[ing.i].used += (ing.q * t.q);
-                            }
+                            RECIPES[t.n].forEach(instruction => {
+                                if(stockState[instruction.i]) {
+                                    stockState[instruction.i].used += (instruction.q * t.q);
+                                }
+                            });
                         }
                     }
                 } else {
-                    // This is a restock entry
-                    if(stockState[t.itemRef]) {
-                        stockState[t.itemRef].added += t.q;
-                    }
+                    if(stockState[t.itemRef]) stockState[t.itemRef].added += t.q;
                 }
 
-                // Log HTML
                 const color = t.ex ? 'red' : (t.n.startsWith('IN:') ? 'green' : (t.type=='restock'?'blue':'black'));
                 html += `<tr><td style="color:${color};">${t.n}</td><td>${t.q}</td><td>${t.p}</td><td class="no-print">${isAdmin ? `<button onclick="delDoc('${doc.id}')" style="color:red;border:none;">X</button>` : ''}</td></tr>`;
             });
 
-            // Update UI Stats
             document.getElementById('log-body').innerHTML = html;
             document.getElementById('total-s').innerText = s;
             document.getElementById('total-e').innerText = e;
             document.getElementById('total-n').innerText = (s - e) + " ETB";
             document.getElementById('total-plates').innerText = foodPlates;
 
-            // Update Incentives
             let dailyFoodInc = 0; if(foodPlates > 25) dailyFoodInc = (foodPlates - 25) * 7.3;
             let dailyBunaInc = 0; if(bunaQty > 45) dailyBunaInc = (bunaQty - 45) * 4.1;
             document.getElementById('daily-incentive').innerText = (dailyFoodInc + dailyBunaInc).toFixed(2);
             document.getElementById('d-inc-food').innerText = dailyFoodInc.toFixed(1);
             document.getElementById('d-inc-buna').innerText = dailyBunaInc.toFixed(1);
 
-            // RENDER INVENTORY TABLE
             renderInventoryTable();
         });
 
-        // 4. Monthly Sync (Unchanged)
         const year = date.split('-')[0], month = date.split('-')[1];
         monthlyListener = db.collection('transactions')
             .where('d', '>=', `${year}-${month}-01`).where('d', '<=', date)
@@ -406,26 +440,11 @@
         INVENTORY_ITEMS.forEach(name => {
             const i = stockState[name];
             const current = (i.yest + i.added - i.used);
-            // Limit decimals to 2 places
             const dispCurr = Number(current.toFixed(2));
             const dispUsed = Number(i.used.toFixed(2));
             
-            // Dashboard Row
-            html += `<tr>
-                <td>${name}</td>
-                <td>${i.yest}</td>
-                <td style="color:green; font-weight:bold;">+${i.added}</td>
-                <td style="color:red;">-${dispUsed}</td>
-                <td class="stock-curr">${dispCurr}</td>
-            </tr>`;
-
-            // Print View Row
-            printHtml += `<tr>
-                <td>${name}</td>
-                <td>${(i.yest + i.added).toFixed(2)}</td>
-                <td>${dispUsed}</td>
-                <td style="font-weight:bold;">${dispCurr}</td>
-            </tr>`;
+            html += `<tr><td>${name}</td><td>${i.yest}</td><td style="color:green; font-weight:bold;">+${i.added}</td><td style="color:red;">-${dispUsed}</td><td class="stock-curr">${dispCurr}</td></tr>`;
+            printHtml += `<tr><td>${name}</td><td>${(i.yest + i.added).toFixed(2)}</td><td>${dispUsed}</td><td style="font-weight:bold;">${dispCurr}</td></tr>`;
         });
         document.getElementById('live-inv-body').innerHTML = html;
         document.getElementById('print-inv-body').innerHTML = printHtml;
@@ -440,28 +459,20 @@
     async function finalizeDay() {
         const date = document.getElementById('work-date').value;
         const batch = db.batch();
-
-        // 1. Save Closing Stock to 'inventory' collection
-        // This makes sure tomorrow's sync finds this data as "Yesterday's Stock"
         INVENTORY_ITEMS.forEach(name => {
             const i = stockState[name];
             const left = (i.yest + i.added - i.used);
-            // Create a doc ID based on date+name to avoid duplicates
             const docRef = db.collection('inventory').doc(`${date}_${name.replace(/\s/g,'')}`);
             batch.set(docRef, { n: name, left: left, d: date, ts: Date.now() });
         });
-
-        // 2. Clear Today's Transactions
         const tSnap = await db.collection('transactions').where('d', '==', date).get();
         tSnap.forEach(d => batch.delete(d.ref));
-
         await batch.commit();
         alert("Day Finalized. Inventory Saved. Sales Cleared.");
         location.reload();
     }
 
     async function delDoc(id) { if(confirm("Delete Record?")) await db.collection('transactions').doc(id).delete(); }
-    
     async function handleAuth() {
         if(auth.currentUser) { auth.signOut(); } 
         else {
