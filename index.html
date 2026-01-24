@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Bean & Bloom POS - V2</title>
+<title>Bean & Bloom POS - V3 (Admin Secured)</title>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -139,15 +139,17 @@
             </div>
         </div>
 
-        <button class="accordion" style="color:green; border-color:green;">የገቡ ነገሮች (Add Stock)</button>
-        <div class="panel">
-            <div id="restock-container" style="padding-top:10px;"></div>
-            <div id="restock-log-container" style="display:none; margin-top:15px; border-top:1px dashed #ccc; padding-top:10px;">
-                <h5 style="margin:0 0 5px 0; color:#333;">Today's Restock Log</h5>
-                <table style="width:100%;">
-                    <thead><tr><th>Item</th><th>Total Added</th><th>Action</th></tr></thead>
-                    <tbody id="restock-log-body"></tbody>
-                </table>
+        <div id="admin-stock-wrapper" style="display:none;">
+            <button class="accordion" style="color:green; border-color:green;">የገቡ ነገሮች (Add Stock - Admin)</button>
+            <div class="panel">
+                <div id="restock-container" style="padding-top:10px;"></div>
+                <div id="restock-log-container" style="display:none; margin-top:15px; border-top:1px dashed #ccc; padding-top:10px;">
+                    <h5 style="margin:0 0 5px 0; color:#333;">Today's Restock Log</h5>
+                    <table style="width:100%;">
+                        <thead><tr><th>Item</th><th>Total Added</th><th>Action</th></tr></thead>
+                        <tbody id="restock-log-body"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
         
@@ -246,7 +248,11 @@
             document.getElementById('admin-month-card').style.display = isAdmin ? 'block' : 'none';
             document.getElementById('auth-btn').innerText = isAdmin ? "Logout Admin" : "Admin Login";
             document.getElementById('print-btn').style.display = isAdmin ? 'block' : 'none';
+            
+            // ADMIN ONLY SECTIONS VISIBILITY
+            document.getElementById('admin-stock-wrapper').style.display = isAdmin ? 'block' : 'none';
             document.getElementById('restock-log-container').style.display = isAdmin ? 'block' : 'none';
+            
             sync();
         });
     };
@@ -463,13 +469,6 @@
         
         const diff = actualLeft - currentCalculated; 
         if(Math.abs(diff) < 0.01) return;
-
-        // If Actual > System: We have extra. Treat as Restock/Found.
-        // If Actual < System: We are missing some. Treat as Usage/Sold.
-        // We handle both by adding a transaction that adjusts the math.
-        
-        // We effectively want to add 'diff' to the 'Left' calculation (Start + Added - Used).
-        // Since Left = Start + Added - Used, we can achieve this by adding to 'Added' (Restock).
         
         await db.collection('transactions').add({ 
             n: `Manual Count Adj: ${itemName}`, 
