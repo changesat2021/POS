@@ -90,7 +90,7 @@
         <div class="card" style="background:var(--accent); color:white"><span class="lbl" style="color:#aaa">Net Cash</span><span class="val" id="total-n">0</span></div>
         <div class="card" style="border-color:var(--food);"><span class="lbl" style="color:var(--food)">Plates</span><span class="val" id="total-plates" style="color:var(--food)">0</span></div>
         
-        <div class="card" style="grid-column: span 2; background: #2c3e50; border: 2px solid var(--gold); margin-top:5px;">
+        <div class="card" id="admin-month-card" style="display:none; grid-column: span 2; background: #2c3e50; border: 2px solid var(--gold); margin-top:5px;">
             <span class="lbl" style="color:var(--gold);">ወርሃዊ ገቢ (Net)</span>
             <span class="val" id="month-n" style="color:var(--gold); font-size:1.4rem;">...</span>
         </div>
@@ -108,7 +108,8 @@
 
     <div class="no-print">
         <button class="accordion" style="background:#333; color:white;">መኖር ያለባቸው ነገሮች (Inventory)</button>
-        <div class="panel" style="display:block; max-height:1000px;"> <table class="inv-table">
+        <div class="panel" style="display:block; max-height:1000px;"> 
+            <table class="inv-table">
                 <thead><tr><th>Item</th><th>Yest.</th><th>Added</th><th>Sold</th><th>LEFT</th></tr></thead>
                 <tbody id="live-inv-body"></tbody>
             </table>
@@ -117,22 +118,17 @@
         <button class="accordion">ትኩስና ቀዝቃዛ መጠጦች</button>
         <div class="panel"><div id="grid-hot" class="menu-grid"></div></div>
 
-        <button class="accordion">ጁሶች</button>
-        <div class="panel"><div id="grid-juices" class="menu-grid"></div></div>
-
         <button class="accordion">የፆም ምግቦች</button>
         <div class="panel"><div id="grid-fasting" class="menu-grid"></div></div>
+
+        <button class="accordion">ጁሶች</button>
+        <div class="panel"><div id="grid-juices" class="menu-grid"></div></div>
 
         <button class="accordion">የፍስክ ምግቦች</button>
         <div class="panel"><div id="grid-nonfast" class="menu-grid"></div></div>
 
         <button class="accordion">ተጨማሪ ነገሮች</button>
         <div class="panel"><div id="grid-add" class="menu-grid"></div></div>
-
-        <button class="accordion" style="color:green; border-color:green;">የገቡ ነገሮች (Add Stock)</button>
-        <div class="panel">
-            <div id="restock-container" style="padding-top:10px;"></div>
-        </div>
 
         <button class="accordion">ተጨማሪ ገቢ & ወጭወች</button>
         <div class="panel">
@@ -153,6 +149,11 @@
                 </div>
                 <button onclick="saveEx()" style="width:100%; margin-top:5px; padding:10px; background:red; color:white; border:none; border-radius:5px;">Save (-)</button>
             </div>
+        </div>
+
+        <button class="accordion" style="color:green; border-color:green;">የገቡ ነገሮች (Add Stock)</button>
+        <div class="panel">
+            <div id="restock-container" style="padding-top:10px;"></div>
         </div>
     </div>
 
@@ -210,7 +211,7 @@
         { n: 'ፓስታ በስጎ', p: 130, c: 'fasting' }, { n: 'ሽሮ', p: 120, c: 'fasting' }, { n: 'ተጋቢኖ', p: 130, c: 'fasting' }, { n: 'ሽሮ በሰላጣ', p: 180, c: 'fasting' }, { n: 'ሃፍ ሃፍ', p: 150, c: 'fasting' }, { n: 'ፍርፍር', p: 100, c: 'fasting' }, { n: 'ፉል ኖርማል', p: 90, c: 'fasting' }, { n: 'ፉል በአቮካዶ', p: 90, c: 'fasting' }, { n: 'ፉል በእንቁላል', p: 120, c: 'fasting' }, { n: 'ቲማቲም ለብለብ', p: 100, c: 'fasting' }, { n: 'በያይነት', p: 140, c: 'fasting' }, { n: 'ፎሶሊያ', p: 160, c: 'fasting' }, { n: 'አዚፋ', p: 160, c: 'fasting' }, { n: 'ቺፕስ 25', p: 25, c: 'fasting' }, { n: 'ቺፕስ 35', p: 35, c: 'fasting' }, { n: 'ቺፕስ 80', p: 80, c: 'fasting' }, { n: 'እርጥብ', p: 90, c: 'fasting' }, { n: 'እርጥብ ስፔሻል', p: 120, c: 'fasting' }, { n: 'ፓስታ በአትክልት', p: 140, c: 'fasting' }, { n: 'ሩዝ በአትክልት', p: 140, c: 'fasting' },
         { n: 'ጥብስ', p: 270, c: 'nonfast' }, { n: 'ስጋ ፍርፍር', p: 250, c: 'nonfast' }, { n: 'ፓስታ በስጋ', p: 250, c: 'nonfast' }, { n: 'ፓስታ በ እንቁላል', p: 200, c: 'nonfast' }, { n: 'እንቁላል ሳንድዊች', p: 120, c: 'nonfast' }, { n: 'ጥብስ ፍርፍር', p: 300, c: 'nonfast' }, { n: 'እንቁላል በስጋ', p: 250, c: 'nonfast' }, { n: 'እንቁላል ፍርፍር', p: 140, c: 'nonfast' }, { n: 'ቋንጣ ፍርፍር', p: 300, c: 'nonfast' }, { n: 'ፉል በቅቤ', p: 140, c: 'nonfast' }, { n: 'ሽሮ በቅቤ', p: 180, c: 'nonfast' },
         { n: 'ዳቦ', p: 15, c: 'add' }, { n: 'ግማሽ እንጀራ', p: 20, c: 'add' }, { n: 'እንጀራ', p: 35, c: 'add' }, { n: 'አምባሻ', p: 30, c: 'add' }, { n: 'ሳምቡሳ', p: 25, c: 'add' }, { n: 'ብስኩት', p: 25, c: 'add' }, { n: 'ቴካዌ ከፕ', p: 15, c: 'add' }, 
-        { n: 'እንቁላል ቅቅል', p: 30, c: 'add' } // New Item
+        { n: 'እንቁላል ቅቅል', p: 30, c: 'add' }
     ];
 
     const INVENTORY_ITEMS = [
@@ -221,36 +222,21 @@
     const FOOD_SET = new Set(MENU.filter(i => i.c === 'fasting' || i.c === 'nonfast').map(i => i.n));
 
     // --- FORMULA ENGINE ---
-    // Now supports Arrays for multiple ingredients per item
     const RECIPES = {
-        // Drinks
         'ቡና': [{ i: 'ቡና በፐርሰንት', q: 1/96 }],
         'ውሃ ግማሽ': [{ i: 'ውሃ ግማሽ', q: 1 }],
         'ውሃ 1 ሊትር': [{ i: 'ውሃ 1 ሊትር', q: 1 }],
         'ውሃ 2 ሊትር': [{ i: 'ውሃ 2 ሊትር', q: 1 }],
         'ለስላሳ': [{ i: 'ለስላሳ', q: 1 }],
-        
-        // Pasta Logic
         'ፓስታ በስጎ': [{ i: 'ፓስታ በፐርሰንት', q: 1/5 }],
         'ፓስታ በስጋ': [{ i: 'ፓስታ በፐርሰንት', q: 1/5 }],
         'ፓስታ በአትክልት': [{ i: 'ፓስታ በፐርሰንት', q: 1/6 }],
         'ሃፍ ሃፍ': [{ i: 'ፓስታ በፐርሰንት', q: 1/12 }],
-        
-        // Items with Multiple Ingredients (Pasta + Eggs, or Meat + Eggs)
-        'ፓስታ በ እንቁላል': [
-            { i: 'ፓስታ በፐርሰንት', q: 1/5 }, 
-            { i: 'እንቁላል', q: 2 }
-        ],
-        'እንቁላል በስጋ': [
-            { i: 'የጥብስ ስጋ', q: 1/10 }, // Assuming small meat portion
-            { i: 'እንቁላል', q: 2 }
-        ],
-
-        // Meat & Eggs Logic
+        'ፓስታ በ እንቁላል': [{ i: 'ፓስታ በፐርሰንት', q: 1/5 }, { i: 'እንቁላል', q: 2 }],
+        'እንቁላል በስጋ': [{ i: 'የጥብስ ስጋ', q: 1/10 }, { i: 'እንቁላል', q: 2 }],
         'እንቁላል ሳንድዊች': [{ i: 'እንቁላል', q: 2 }],
         'እንቁላል ፍርፍር': [{ i: 'እንቁላል', q: 2 }],
-        'እንቁላል ቅቅል': [{ i: 'እንቁላል', q: 1 }], // Boiled egg = 1 egg
-        
+        'እንቁላል ቅቅል': [{ i: 'እንቁላል', q: 1 }],
         'ቋንጣ ፍርፍር': [{ i: 'የቋንጣ ስጋ', q: 1/6 }],
         'ጥብስ': [{ i: 'የጥብስ ስጋ', q: 1/7 }],
         'ጥብስ ፍርፍር': [{ i: 'የጥብስ ስጋ', q: 1/7 }],
@@ -269,8 +255,12 @@
         renderRestockInputs();
         auth.onAuthStateChanged(user => {
             isAdmin = (user && user.uid === adminUID);
+            
+            // --- SHOW/HIDE ADMIN ONLY MONTHLY NET ---
+            document.getElementById('admin-month-card').style.display = isAdmin ? 'block' : 'none';
             document.getElementById('auth-btn').innerText = isAdmin ? "Logout Admin" : "Admin Login";
             document.getElementById('print-btn').style.display = isAdmin ? 'block' : 'none';
+            
             sync();
         });
     };
@@ -378,7 +368,6 @@
                         if (FOOD_SET.has(t.n)) foodPlates += t.q;
                         if (t.n === 'ቡና') bunaQty += t.q;
                         
-                        // UPDATED FORMULA ENGINE FOR MULTIPLE INGREDIENTS
                         if(RECIPES[t.n]) {
                             RECIPES[t.n].forEach(instruction => {
                                 if(stockState[instruction.i]) {
