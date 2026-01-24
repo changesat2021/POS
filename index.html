@@ -55,8 +55,6 @@
         .accordion:after { content: none; }
         .panel { max-height: none !important; display: block; border: none; }
         body { background: white; }
-        .container { max-width: 100%; padding: 0; }
-        .card { border: none; }
     }
 
     .admin-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 15px; border-top: 1px solid #ddd; display: flex; justify-content: space-around; }
@@ -136,8 +134,10 @@
             </div>
         </div>
 
-        <button class="accordion" style="color:green; border-color:green;">የገቡ ነገሮች (Add Stock)</button>
-        <div class="panel"><div id="restock-container" style="padding-top:10px;"></div></div>
+        <div id="admin-restock-section" style="display:none;">
+            <button class="accordion" style="color:green; border-color:green;">የገቡ ነገሮች (Add Stock) - Admin Only</button>
+            <div class="panel"><div id="restock-container" style="padding-top:10px;"></div></div>
+        </div>
         
         <button class="accordion">Sales Report (Description | Qty | Total)</button>
         <div class="panel">
@@ -228,9 +228,13 @@
         setupAccordions(); renderMenu(); renderRestockInputs();
         auth.onAuthStateChanged(user => {
             isAdmin = (user && user.uid === adminUID);
+            
+            // Toggle Admin Views
             document.getElementById('admin-month-card').style.display = isAdmin ? 'block' : 'none';
+            document.getElementById('admin-restock-section').style.display = isAdmin ? 'block' : 'none';
             document.getElementById('auth-btn').innerText = isAdmin ? "Logout Admin" : "Admin Login";
             document.getElementById('print-btn').style.display = isAdmin ? 'block' : 'none';
+            
             sync();
         });
     };
@@ -238,12 +242,12 @@
     function setupAccordions() {
         const acc = document.getElementsByClassName("accordion");
         for (let i = 0; i < acc.length; i++) {
-            acc[i].addEventListener("click", function() {
+            acc[i].onclick = function() {
                 this.classList.toggle("active");
                 const panel = this.nextElementSibling;
                 if (panel.style.maxHeight) { panel.style.maxHeight = null; panel.classList.remove('show'); } 
                 else { panel.classList.add('show'); panel.style.maxHeight = panel.scrollHeight + "px"; }
-            });
+            };
         }
     }
 
@@ -268,6 +272,7 @@
     }
 
     async function addRestock(itemName, inputId, btnId) {
+        if(!isAdmin) return;
         const qty = parseFloat(document.getElementById(inputId).value); if(!qty) return;
         const btn = document.getElementById(btnId); btn.innerText = '...';
         await db.collection('transactions').add({ n: `Restock: ${itemName}`, q: qty, p: 0, d: document.getElementById('work-date').value, ex: false, type: 'restock', itemRef: itemName, ts: Date.now() });
@@ -334,7 +339,7 @@
 
             Object.keys(reportMap).sort().forEach(itemName => {
                 const item = reportMap[itemName];
-                let editBtn = (isAdmin && item.isMenu) ? `<button onclick="adjustItemTotal('${itemName}', ${item.q})" style="padding:2px 8px; cursor:pointer;">✏️</button>` : '';
+                let editBtn = (isAdmin && item.isMenu) ? `<button onclick="adjustItemTotal('${itemName}', ${item.q})" style="padding:2px 8px; cursor:pointer; background:none; border:1px solid #ccc; border-radius:4px;">✏️</button>` : '';
                 html += `<tr><td style="color:${item.c};">${itemName}</td><td>${item.q}</td><td>${item.p}</td><td class="no-print">${editBtn}</td></tr>`;
             });
 
@@ -344,11 +349,11 @@
             document.getElementById('total-n').innerText = (s - e) + " ETB";
             document.getElementById('total-plates').innerText = foodPlates;
 
-            let dailyFoodInc = 0; if(foodPlates > 25) dailyFoodInc = (foodPlates - 25) * 7.3;
-            let dailyBunaInc = 0; if(bunaQty > 45) dailyBunaInc = (bunaQty - 45) * 4.1;
-            document.getElementById('daily-incentive').innerText = (dailyFoodInc + dailyBunaInc).toFixed(2);
-            document.getElementById('d-inc-food').innerText = dailyFoodInc.toFixed(1);
-            document.getElementById('d-inc-buna').innerText = dailyBunaInc.toFixed(1);
+            let dFInc = 0; if(foodPlates > 25) dFInc = (foodPlates - 25) * 7.3;
+            let dBInc = 0; if(bunaQty > 45) dBInc = (bunaQty - 45) * 4.1;
+            document.getElementById('daily-incentive').innerText = (dFInc + dBInc).toFixed(2);
+            document.getElementById('d-inc-food').innerText = dFInc.toFixed(1);
+            document.getElementById('d-inc-buna').innerText = dBInc.toFixed(1);
             renderInventoryTable();
         });
 
@@ -375,18 +380,19 @@
     }
 
     async function adjustItemTotal(itemName, currentQty) {
-        let newQty = prompt(`Correction for ${itemName}:\nChange current total (${currentQty}) to:`, currentQty);
-        if (newQty === null) return;
-        newQty = parseInt(newQty);
-        if (isNaN(newQty)) return alert("Enter a number.");
-        if (newQty === currentQty) return;
+        if(!isAdmin) return;
+        let nQty = prompt(`Correction for ${itemName}:\nChange current total (${currentQty}) to:`, currentQty);
+        if (nQty === null) return;
+        nQty = parseInt(nQty);
+        if (isNaN(nQty)) return alert("Enter a number.");
+        if (nQty === currentQty) return;
 
-        const diff = newQty - currentQty;
+        const diff = nQty - currentQty;
         const menuObj = MENU.find(m => m.n === itemName);
-        const unitPrice = menuObj ? menuObj.p : 0;
+        const uPrice = menuObj ? menuObj.p : 0;
 
         await db.collection('transactions').add({
-            n: itemName, q: diff, p: diff * unitPrice,
+            n: itemName, q: diff, p: diff * uPrice,
             d: document.getElementById('work-date').value,
             ex: false, ts: Date.now(), note: 'Admin Edit'
         });
@@ -396,15 +402,16 @@
         let html = '', printHtml = '';
         INVENTORY_ITEMS.forEach(name => {
             const i = stockState[name];
-            const current = (i.yest + i.added - i.used);
-            html += `<tr><td>${name}</td><td>${i.yest}</td><td style="color:green;">+${i.added}</td><td style="color:red;">-${i.used.toFixed(2)}</td><td class="stock-curr">${current.toFixed(2)}</td></tr>`;
-            printHtml += `<tr><td>${name}</td><td>${(i.yest + i.added).toFixed(2)}</td><td>${i.used.toFixed(2)}</td><td>${current.toFixed(2)}</td></tr>`;
+            const curr = (i.yest + i.added - i.used);
+            html += `<tr><td>${name}</td><td>${i.yest}</td><td style="color:green;">+${i.added}</td><td style="color:red;">-${i.used.toFixed(2)}</td><td class="stock-curr">${curr.toFixed(2)}</td></tr>`;
+            printHtml += `<tr><td>${name}</td><td>${(i.yest + i.added).toFixed(2)}</td><td>${i.used.toFixed(2)}</td><td>${curr.toFixed(2)}</td></tr>`;
         });
         document.getElementById('live-inv-body').innerHTML = html;
         document.getElementById('print-inv-body').innerHTML = printHtml;
     }
 
     function initiateFinalize() {
+        if(!isAdmin) return;
         document.getElementById('pdf-date').innerText = "DATE: " + document.getElementById('work-date').value;
         window.print();
         setTimeout(() => { if(confirm("Report Saved? Proceeding will clear today's transactions and save stock levels.")) finalizeDay(); }, 1500);
