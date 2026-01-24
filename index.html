@@ -367,6 +367,10 @@
 
         dailyListener = db.collection('transactions').where('d', '==', date).onSnapshot(snap => {
             let s=0, e=0, foodPlates=0, bunaQty=0, html='';
+            
+            // Aggregation Map
+            let reportMap = {};
+
             INVENTORY_ITEMS.forEach(i => { stockState[i].added = 0; stockState[i].used = 0; });
 
             snap.forEach(doc => {
@@ -389,8 +393,17 @@
                     if(stockState[t.itemRef]) stockState[t.itemRef].added += t.q;
                 }
 
+                // Add to Map for HTML Display
                 const color = t.ex ? 'red' : (t.n.startsWith('IN:') ? 'green' : (t.type=='restock'?'blue':'black'));
-                html += `<tr><td style="color:${color};">${t.n}</td><td>${t.q}</td><td>${t.p}</td><td class="no-print">${isAdmin ? `<button onclick="delDoc('${doc.id}')" style="color:red;border:none;">X</button>` : ''}</td></tr>`;
+                if(!reportMap[t.n]) reportMap[t.n] = { q:0, p:0, c: color };
+                reportMap[t.n].q += t.q;
+                reportMap[t.n].p += t.p;
+            });
+
+            // Generate HTML from Map
+            Object.keys(reportMap).sort().forEach(itemName => {
+                const item = reportMap[itemName];
+                html += `<tr><td style="color:${item.c};">${itemName}</td><td>${item.q}</td><td>${item.p}</td><td class="no-print"></td></tr>`;
             });
 
             document.getElementById('log-body').innerHTML = html;
