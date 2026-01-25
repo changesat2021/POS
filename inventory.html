@@ -159,6 +159,9 @@
                 <thead><tr><th>Description</th><th>Qty</th><th>Total</th><th class="no-print"></th></tr></thead>
                 <tbody id="log-body"></tbody>
             </table>
+            <div style="font-size:0.75rem; color:#666; margin-top:5px;" class="no-print">
+                * Admin: Tap ✏️ to edit amounts. For Menu items, it edits quantity. For Expenses/Income, it edits the total amount.
+            </div>
         </div>
 
         <button class="accordion" style="background:#333; color:white;">መኖር ያለባቸው ነገሮች (Inventory)</button>
@@ -222,7 +225,6 @@
 
     const INVENTORY_ITEMS = [ "ውሃ ግማሽ", "ውሃ 1 ሊትር", "ውሃ 2 ሊትር", "ለስላሳ", "እንጀራ", "ዳቦ", "እንቁላል", "የጥብስ ስጋ", "የዱለት ስጋ", "የቋንጣ ስጋ", "ፓስታ በፐርሰንት", "ቡና በፐርሰንት" ];
     const FOOD_SET = new Set(MENU.filter(i => i.c === 'fasting' || i.c === 'nonfast').map(i => i.n));
-    // Items that need special manual linking in Inventory Dashboard
     const MANUAL_LINK_ITEMS = ['እንጀራ', 'ዳቦ'];
 
     const RECIPES = {
@@ -329,7 +331,7 @@
         dailyListener = db.collection('transactions').where('d', '==', date).onSnapshot(snap => {
             let s=0, e=0, foodPlates=0, bunaQty=0, html='';
             let reportMap = {};
-            let restockMap = {}; // For Admin Restock Edit
+            let restockMap = {}; 
 
             INVENTORY_ITEMS.forEach(i => { stockState[i].added = 0; stockState[i].used = 0; });
 
@@ -345,10 +347,7 @@
                         }
                     }
                 } else { 
-                    // This is a restock or adjustment
                     if(stockState[t.itemRef]) stockState[t.itemRef].added += t.q; 
-                    
-                    // Track for restock editing log
                     if(!restockMap[t.itemRef]) restockMap[t.itemRef] = 0;
                     restockMap[t.itemRef] += t.q;
                 }
@@ -357,17 +356,20 @@
                     const color = t.ex ? 'red' : (t.n.startsWith('IN:') ? 'green' : 'black');
                     if(!reportMap[t.n]) {
                         const isMenu = MENU.some(m => m.n === t.n);
-                        reportMap[t.n] = { q:0, p:0, c: color, isMenu: isMenu };
+                        // Identify if it's an expense or custom income
+                        const isExpense = t.ex; 
+                        reportMap[t.n] = { q:0, p:0, c: color, isMenu: isMenu, isExpense: isExpense };
                     }
                     reportMap[t.n].q += t.q;
                     reportMap[t.n].p += t.p;
                 }
             });
 
-            // Render Sales Report
+            // Render Sales Report with Enhanced Edit Logic
             Object.keys(reportMap).sort().forEach(itemName => {
                 const item = reportMap[itemName];
-                let editBtn = (isAdmin && item.isMenu) ? `<button onclick="adjustItemTotal('${itemName}', ${item.q})" style="padding:2px 8px; cursor:pointer;">✏️</button>` : '';
+                // Allow edit if Admin. Arguments: Name, Qty, Total, IsMenu, IsExpense
+                let editBtn = (isAdmin) ? `<button onclick="adjustItemTotal('${itemName}', ${item.q}, ${item.p}, ${item.isMenu}, ${item.isExpense})" style="padding:2px 8px; cursor:pointer;">✏️</button>` : '';
                 html += `<tr><td style="color:${item.c};">${itemName}</td><td>${item.q}</td><td>${item.p}</td><td class="no-print">${editBtn}</td></tr>`;
             });
             document.getElementById('log-body').innerHTML = html;
@@ -376,7 +378,6 @@
             let restockHtml = '';
             Object.keys(restockMap).sort().forEach(itemName => {
                 let qty = restockMap[itemName];
-                // Only show if qty is not 0 (allows hiding cancelled ones)
                 if (Math.abs(qty) > 0.001) {
                     restockHtml += `<tr><td>${itemName}</td><td>${qty.toFixed(2)}</td><td><button onclick="adjustRestockTotal('${itemName}', ${qty})" style="padding:2px 8px; cursor:pointer;">✏️ Edit</button></td></tr>`;
                 }
@@ -419,23 +420,49 @@
         });
     }
 
-    // --- SALES EDIT LOGIC ---
-    async function adjustItemTotal(itemName, currentQty) {
-        let newQty = prompt(`Correction for ${itemName}:\nChange current total (${currentQty}) to:`, currentQty);
-        if (newQty === null) return;
-        newQty = parseInt(newQty);
-        if (isNaN(newQty)) return alert("Enter a number.");
-        if (newQty === currentQty) return;
+    // --- SALES / EXPENSE / INCOME EDIT LOGIC ---
+    async function adjustItemTotal(itemName, currentQty, currentTotal, isMenu, isExpense) {
+        if (isMenu) {
+            // Logic for Menu Items: Edit Quantity (Count)
+            let newQty = prompt(`Correction for ${itemName} (Menu Item):\nChange current Quantity (${currentQty}) to:`, currentQty);
+            if (newQty === null) return;
+            newQty = parseInt(newQty);
+            if (isNaN(newQty)) return alert("Enter a number.");
+            if (newQty === currentQty) return;
 
-        const diff = newQty - currentQty;
-        const menuObj = MENU.find(m => m.n === itemName);
-        const unitPrice = menuObj ? menuObj.p : 0;
+            const diff = newQty - currentQty;
+            const menuObj = MENU.find(m => m.n === itemName);
+            const unitPrice = menuObj ? menuObj.p : 0;
 
-        await db.collection('transactions').add({
-            n: itemName, q: diff, p: diff * unitPrice,
-            d: document.getElementById('work-date').value,
-            ex: false, ts: Date.now(), note: 'Admin Edit'
-        });
+            await db.collection('transactions').add({
+                n: itemName, q: diff, p: diff * unitPrice,
+                d: document.getElementById('work-date').value,
+                ex: false, ts: Date.now(), note: 'Admin Edit'
+            });
+
+        } else {
+            // Logic for Income/Expenses: Edit Amount (Money)
+            // User usually wants to fix the price, not the arbitrary quantity count
+            let newTotal = prompt(`Correction for ${itemName} (Income/Expense):\nChange Total Amount (${currentTotal}) to:`, currentTotal);
+            if (newTotal === null) return;
+            newTotal = parseFloat(newTotal);
+            if (isNaN(newTotal)) return alert("Enter a valid amount.");
+            
+            const diff = newTotal - currentTotal;
+            if (Math.abs(diff) < 0.01) return;
+
+            // We record the difference in price. 
+            // We set Qty to 0 so we don't mess up the "count" of transactions in the report list too much, just the value.
+            await db.collection('transactions').add({
+                n: itemName, 
+                q: 0, 
+                p: diff, 
+                d: document.getElementById('work-date').value,
+                ex: isExpense, // Preserve whether it was an expense or income
+                ts: Date.now(), 
+                note: 'Admin Amount Correction'
+            });
+        }
     }
 
     // --- RESTOCK EDIT LOGIC ---
@@ -447,7 +474,6 @@
         if (Math.abs(newQty - currentQty) < 0.001) return;
 
         const diff = newQty - currentQty;
-        // We add a transaction to bridge the gap
         await db.collection('transactions').add({ 
             n: `Restock Adj: ${itemName}`, 
             q: diff, 
@@ -473,7 +499,7 @@
         await db.collection('transactions').add({ 
             n: `Manual Count Adj: ${itemName}`, 
             q: diff, 
-            p: 0, // No money impact, just stock correction
+            p: 0, 
             d: document.getElementById('work-date').value, 
             ex: false, 
             type: 'restock', 
@@ -488,7 +514,6 @@
             const i = stockState[name];
             const current = (i.yest + i.added - i.used);
             
-            // Special Logic for Admin Editing Injera/Dabo
             let leftDisplay = current.toFixed(2);
             if (isAdmin && MANUAL_LINK_ITEMS.includes(name)) {
                 leftDisplay = `<span class="admin-edit-link" onclick="adjustLiveInventory('${name}', ${current})">${current.toFixed(2)}</span>`;
