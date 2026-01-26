@@ -47,7 +47,6 @@
     .inv-table td { font-size: 0.8rem; }
     .stock-curr { font-weight: bold; color: var(--accent); }
     
-    /* Edit Link Style for Special Inventory */
     .admin-edit-link { color: blue; text-decoration: underline; cursor: pointer; background: #eef; padding: 2px 5px; border-radius: 3px; }
 
     .print-only { display: none; }
@@ -159,9 +158,6 @@
                 <thead><tr><th>Description</th><th>Qty</th><th>Total</th><th class="no-print"></th></tr></thead>
                 <tbody id="log-body"></tbody>
             </table>
-            <div style="font-size:0.75rem; color:#666; margin-top:5px;" class="no-print">
-                * Admin: Tap ✏️ to edit amounts. For Menu items, it edits quantity. For Expenses/Income, it edits the total amount.
-            </div>
         </div>
 
         <button class="accordion" style="background:#333; color:white;">መኖር ያለባቸው ነገሮች (Inventory)</button>
@@ -170,7 +166,6 @@
                 <thead><tr><th>Item</th><th>Yest.</th><th>Added</th><th>Sold</th><th>LEFT</th></tr></thead>
                 <tbody id="live-inv-body"></tbody>
             </table>
-            <div style="font-size:0.7rem; color:#666; margin-top:5px;">* Admin: Tap blue numbers on Injera/Dabo to correct stock.</div>
         </div>
     </div>
 
@@ -225,8 +220,6 @@
 
     const INVENTORY_ITEMS = [ "ውሃ ግማሽ", "ውሃ 1 ሊትር", "ውሃ 2 ሊትር", "ለስላሳ", "እንጀራ", "ዳቦ", "እንቁላል", "የጥብስ ስጋ", "የዱለት ስጋ", "የቋንጣ ስጋ", "ፓስታ በፐርሰንት", "ቡና በፐርሰንት" ];
     const FOOD_SET = new Set(MENU.filter(i => i.c === 'fasting' || i.c === 'nonfast').map(i => i.n));
-    const MANUAL_LINK_ITEMS = ['እንጀራ', 'ዳቦ'];
-
     const RECIPES = {
         'ቡና': [{ i: 'ቡና በፐርሰንት', q: 1/96 }],
         'ውሃ ግማሽ': [{ i: 'ውሃ ግማሽ', q: 1 }], 'ውሃ 1 ሊትር': [{ i: 'ውሃ 1 ሊትር', q: 1 }], 'ውሃ 2 ሊትር': [{ i: 'ውሃ 2 ሊትር', q: 1 }],
@@ -250,11 +243,8 @@
             document.getElementById('admin-month-card').style.display = isAdmin ? 'block' : 'none';
             document.getElementById('auth-btn').innerText = isAdmin ? "Logout Admin" : "Admin Login";
             document.getElementById('print-btn').style.display = isAdmin ? 'block' : 'none';
-            
-            // ADMIN ONLY SECTIONS VISIBILITY
             document.getElementById('admin-stock-wrapper').style.display = isAdmin ? 'block' : 'none';
             document.getElementById('restock-log-container').style.display = isAdmin ? 'block' : 'none';
-            
             sync();
         });
     };
@@ -316,90 +306,84 @@
         document.getElementById('rev-name').value = ''; document.getElementById('rev-amt').value = '';
     }
 
+    function getPreviousDay(dateStr) {
+        let d = new Date(dateStr);
+        d.setDate(d.getDate() - 1);
+        return d.toISOString().split('T')[0];
+    }
+
     async function sync() {
         const date = document.getElementById('work-date').value;
         if(dailyListener) dailyListener();
         if(monthlyListener) monthlyListener();
 
-        stockState = {}; INVENTORY_ITEMS.forEach(i => stockState[i] = { yest: 0, added: 0, used: 0 });
+        stockState = {}; 
+        INVENTORY_ITEMS.forEach(i => stockState[i] = { yest: 0, added: 0, used: 0 });
 
-        const dObj = new Date(date); dObj.setDate(dObj.getDate() - 1);
-        const yestStr = dObj.toISOString().split('T')[0];
-        const yestSnap = await db.collection('inventory').where('d', '==', yestStr).get();
-        yestSnap.forEach(doc => { const d = doc.data(); if(stockState[d.n]) stockState[d.n].yest = parseFloat(d.left); });
+        const yesterday = getPreviousDay(date);
+        const yestSnap = await db.collection('inventory').where('d', '==', yesterday).get();
+        yestSnap.forEach(doc => { 
+            const d = doc.data(); 
+            if(stockState[d.n]) stockState[d.n].yest = parseFloat(d.left); 
+        });
 
         dailyListener = db.collection('transactions').where('d', '==', date).onSnapshot(snap => {
             let s=0, e=0, foodPlates=0, bunaQty=0, html='';
-            let reportMap = {};
-            let restockMap = {}; 
+            let reportMap = {}, restockMap = {};
 
             INVENTORY_ITEMS.forEach(i => { stockState[i].added = 0; stockState[i].used = 0; });
 
             snap.forEach(doc => {
                 const t = doc.data();
-                if(t.type !== 'restock') {
-                    if(t.ex) e += t.p; else s += t.p;
-                    if (!t.ex) {
-                        if (FOOD_SET.has(t.n)) foodPlates += t.q;
-                        if (t.n === 'ቡና') bunaQty += t.q;
-                        if(RECIPES[t.n]) {
-                            RECIPES[t.n].forEach(instruction => { if(stockState[instruction.i]) stockState[instruction.i].used += (instruction.q * t.q); });
-                        }
-                    }
-                } else { 
+                if(t.type === 'restock') {
                     if(stockState[t.itemRef]) stockState[t.itemRef].added += t.q; 
                     if(!restockMap[t.itemRef]) restockMap[t.itemRef] = 0;
                     restockMap[t.itemRef] += t.q;
-                }
-
-                if (t.type !== 'restock') {
-                    const color = t.ex ? 'red' : (t.n.startsWith('IN:') ? 'green' : 'black');
-                    if(!reportMap[t.n]) {
-                        const isMenu = MENU.some(m => m.n === t.n);
-                        // Identify if it's an expense or custom income
-                        const isExpense = t.ex; 
-                        reportMap[t.n] = { q:0, p:0, c: color, isMenu: isMenu, isExpense: isExpense };
+                } else {
+                    if(t.ex) e += t.p; else s += t.p;
+                    if(!t.ex) {
+                        if (FOOD_SET.has(t.n)) foodPlates += t.q;
+                        if (t.n === 'ቡና') bunaQty += t.q;
+                        if(RECIPES[t.n]) {
+                            RECIPES[t.n].forEach(instruction => { 
+                                if(stockState[instruction.i]) stockState[instruction.i].used += (instruction.q * t.q); 
+                            });
+                        }
                     }
-                    reportMap[t.n].q += t.q;
-                    reportMap[t.n].p += t.p;
+                    if(!reportMap[t.n]) reportMap[t.n] = { q:0, p:0, ex: t.ex };
+                    reportMap[t.n].q += t.q; reportMap[t.n].p += t.p;
                 }
             });
 
-            // Render Sales Report with Enhanced Edit Logic
             Object.keys(reportMap).sort().forEach(itemName => {
                 const item = reportMap[itemName];
-                // Allow edit if Admin. Arguments: Name, Qty, Total, IsMenu, IsExpense
-                let editBtn = (isAdmin) ? `<button onclick="adjustItemTotal('${itemName}', ${item.q}, ${item.p}, ${item.isMenu}, ${item.isExpense})" style="padding:2px 8px; cursor:pointer;">✏️</button>` : '';
-                html += `<tr><td style="color:${item.c};">${itemName}</td><td>${item.q}</td><td>${item.p}</td><td class="no-print">${editBtn}</td></tr>`;
+                const color = item.ex ? 'red' : (itemName.startsWith('IN:') ? 'green' : 'black');
+                let actions = isAdmin ? `<button onclick="deleteItem('${itemName}')" style="color:red; border:none; background:none; cursor:pointer;">❌</button>` : '';
+                html += `<tr><td style="color:${color}">${itemName}</td><td>${item.q}</td><td>${item.p}</td><td class="no-print">${actions}</td></tr>`;
             });
             document.getElementById('log-body').innerHTML = html;
 
-            // Render Restock Log (Admin)
             let restockHtml = '';
-            Object.keys(restockMap).sort().forEach(itemName => {
-                let qty = restockMap[itemName];
-                if (Math.abs(qty) > 0.001) {
-                    restockHtml += `<tr><td>${itemName}</td><td>${qty.toFixed(2)}</td><td><button onclick="adjustRestockTotal('${itemName}', ${qty})" style="padding:2px 8px; cursor:pointer;">✏️ Edit</button></td></tr>`;
-                }
+            Object.keys(restockMap).sort().forEach(item => {
+                restockHtml += `<tr><td>${item}</td><td>${restockMap[item]}</td><td><button onclick="deleteItem('${item}', true)">❌</button></td></tr>`;
             });
             document.getElementById('restock-log-body').innerHTML = restockHtml;
-
 
             document.getElementById('total-s').innerText = s;
             document.getElementById('total-e').innerText = e;
             document.getElementById('total-n').innerText = (s - e) + " ETB";
             document.getElementById('total-plates').innerText = foodPlates;
 
-            let dailyFoodInc = 0; if(foodPlates > 25) dailyFoodInc = (foodPlates - 25) * 7.3;
-            let dailyBunaInc = 0; if(bunaQty > 45) dailyBunaInc = (bunaQty - 45) * 4.1;
-            document.getElementById('daily-incentive').innerText = (dailyFoodInc + dailyBunaInc).toFixed(2);
-            document.getElementById('d-inc-food').innerText = dailyFoodInc.toFixed(1);
-            document.getElementById('d-inc-buna').innerText = dailyBunaInc.toFixed(1);
+            let foodInc = foodPlates > 25 ? (foodPlates - 25) * 7.3 : 0;
+            let bunaInc = bunaQty > 45 ? (bunaQty - 45) * 4.1 : 0;
+            document.getElementById('daily-incentive').innerText = (foodInc + bunaInc).toFixed(2);
+            document.getElementById('d-inc-food').innerText = foodInc.toFixed(1);
+            document.getElementById('d-inc-buna').innerText = bunaInc.toFixed(1);
             renderInventoryTable();
         });
 
-        const year = date.split('-')[0], month = date.split('-')[1];
-        monthlyListener = db.collection('transactions').where('d', '>=', `${year}-${month}-01`).where('d', '<=', date).onSnapshot(snap => {
+        const month = date.split('-')[0] + '-' + date.split('-')[1];
+        monthlyListener = db.collection('transactions').where('d', '>=', `${month}-01`).where('d', '<=', date).onSnapshot(snap => {
             let mNet = 0, dStats = {};
             snap.forEach(doc => {
                 const t = doc.data(); if(t.type === 'restock') return;
@@ -416,111 +400,27 @@
                 if(dStats[k].b > 45) mInc += (dStats[k].b - 45)*4.1;
             }
             document.getElementById('month-n').innerText = mNet.toLocaleString() + " ETB";
-            document.getElementById('month-incentive').innerText = mInc.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) + " ETB";
+            document.getElementById('month-incentive').innerText = mInc.toLocaleString(undefined,{minimumFractionDigits:2}) + " ETB";
         });
     }
 
-    // --- SALES / EXPENSE / INCOME EDIT LOGIC ---
-    async function adjustItemTotal(itemName, currentQty, currentTotal, isMenu, isExpense) {
-        if (isMenu) {
-            // Logic for Menu Items: Edit Quantity (Count)
-            let newQty = prompt(`Correction for ${itemName} (Menu Item):\nChange current Quantity (${currentQty}) to:`, currentQty);
-            if (newQty === null) return;
-            newQty = parseInt(newQty);
-            if (isNaN(newQty)) return alert("Enter a number.");
-            if (newQty === currentQty) return;
-
-            const diff = newQty - currentQty;
-            const menuObj = MENU.find(m => m.n === itemName);
-            const unitPrice = menuObj ? menuObj.p : 0;
-
-            await db.collection('transactions').add({
-                n: itemName, q: diff, p: diff * unitPrice,
-                d: document.getElementById('work-date').value,
-                ex: false, ts: Date.now(), note: 'Admin Edit'
-            });
-
-        } else {
-            // Logic for Income/Expenses: Edit Amount (Money)
-            // User usually wants to fix the price, not the arbitrary quantity count
-            let newTotal = prompt(`Correction for ${itemName} (Income/Expense):\nChange Total Amount (${currentTotal}) to:`, currentTotal);
-            if (newTotal === null) return;
-            newTotal = parseFloat(newTotal);
-            if (isNaN(newTotal)) return alert("Enter a valid amount.");
-            
-            const diff = newTotal - currentTotal;
-            if (Math.abs(diff) < 0.01) return;
-
-            // We record the difference in price. 
-            // We set Qty to 0 so we don't mess up the "count" of transactions in the report list too much, just the value.
-            await db.collection('transactions').add({
-                n: itemName, 
-                q: 0, 
-                p: diff, 
-                d: document.getElementById('work-date').value,
-                ex: isExpense, // Preserve whether it was an expense or income
-                ts: Date.now(), 
-                note: 'Admin Amount Correction'
-            });
-        }
-    }
-
-    // --- RESTOCK EDIT LOGIC ---
-    async function adjustRestockTotal(itemName, currentQty) {
-        let newQty = prompt(`RESTOCK Correction for ${itemName}:\nChange Total Added (${currentQty}) to:`, currentQty);
-        if (newQty === null) return;
-        newQty = parseFloat(newQty);
-        if (isNaN(newQty)) return alert("Enter a number.");
-        if (Math.abs(newQty - currentQty) < 0.001) return;
-
-        const diff = newQty - currentQty;
-        await db.collection('transactions').add({ 
-            n: `Restock Adj: ${itemName}`, 
-            q: diff, 
-            p: 0, 
-            d: document.getElementById('work-date').value, 
-            ex: false, 
-            type: 'restock', 
-            itemRef: itemName, 
-            ts: Date.now() 
-        });
-    }
-
-    // --- LIVE INVENTORY OVERRIDE LOGIC ---
-    async function adjustLiveInventory(itemName, currentCalculated) {
-        let actualLeft = prompt(`MANUAL COUNT for ${itemName}:\nSystem says: ${currentCalculated}\nWhat is the ACTUAL physical count?`);
-        if(actualLeft === null) return;
-        actualLeft = parseFloat(actualLeft);
-        if(isNaN(actualLeft)) return alert("Enter a valid number");
-        
-        const diff = actualLeft - currentCalculated; 
-        if(Math.abs(diff) < 0.01) return;
-        
-        await db.collection('transactions').add({ 
-            n: `Manual Count Adj: ${itemName}`, 
-            q: diff, 
-            p: 0, 
-            d: document.getElementById('work-date').value, 
-            ex: false, 
-            type: 'restock', 
-            itemRef: itemName, 
-            ts: Date.now() 
-        });
+    async function deleteItem(name, isRestock = false) {
+        if(!confirm("Delete this entry?")) return;
+        const date = document.getElementById('work-date').value;
+        let query = db.collection('transactions').where('d', '==', date).where('n', '==', name);
+        if(isRestock) query = db.collection('transactions').where('d', '==', date).where('itemRef', '==', name);
+        const snap = await query.get();
+        const batch = db.batch(); snap.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
     }
 
     function renderInventoryTable() {
         let html = '', printHtml = '';
         INVENTORY_ITEMS.forEach(name => {
             const i = stockState[name];
-            const current = (i.yest + i.added - i.used);
-            
-            let leftDisplay = current.toFixed(2);
-            if (isAdmin && MANUAL_LINK_ITEMS.includes(name)) {
-                leftDisplay = `<span class="admin-edit-link" onclick="adjustLiveInventory('${name}', ${current})">${current.toFixed(2)}</span>`;
-            }
-
-            html += `<tr><td>${name}</td><td>${i.yest}</td><td style="color:green;">+${i.added}</td><td style="color:red;">-${i.used.toFixed(2)}</td><td class="stock-curr">${leftDisplay}</td></tr>`;
-            printHtml += `<tr><td>${name}</td><td>${(i.yest + i.added).toFixed(2)}</td><td>${i.used.toFixed(2)}</td><td>${current.toFixed(2)}</td></tr>`;
+            const left = (i.yest + i.added - i.used);
+            html += `<tr><td>${name}</td><td>${i.yest.toFixed(1)}</td><td style="color:green">+${i.added}</td><td style="color:red">-${i.used.toFixed(1)}</td><td class="stock-curr">${left.toFixed(1)}</td></tr>`;
+            printHtml += `<tr><td>${name}</td><td>${(i.yest + i.added).toFixed(1)}</td><td>${i.used.toFixed(1)}</td><td>${left.toFixed(1)}</td></tr>`;
         });
         document.getElementById('live-inv-body').innerHTML = html;
         document.getElementById('print-inv-body').innerHTML = printHtml;
@@ -529,7 +429,7 @@
     function initiateFinalize() {
         document.getElementById('pdf-date').innerText = "DATE: " + document.getElementById('work-date').value;
         window.print();
-        setTimeout(() => { if(confirm("Report Saved? Proceeding will clear today's transactions and save stock levels.")) finalizeDay(); }, 1500);
+        setTimeout(() => { if(confirm("Save stock and clear day?")) finalizeDay(); }, 1500);
     }
 
     async function finalizeDay() {
@@ -538,19 +438,19 @@
         INVENTORY_ITEMS.forEach(name => {
             const i = stockState[name];
             const left = (i.yest + i.added - i.used);
-            const docRef = db.collection('inventory').doc(`${date}_${name.replace(/\s/g,'')}`);
-            batch.set(docRef, { n: name, left: left, d: date, ts: Date.now() });
+            const ref = db.collection('inventory').doc(`${date}_${name.replace(/\s/g,'')}`);
+            batch.set(ref, { n: name, left: left, d: date, ts: Date.now() });
         });
-        const tSnap = await db.collection('transactions').where('d', '==', date).get();
-        tSnap.forEach(d => batch.delete(d.ref));
+        const snap = await db.collection('transactions').where('d', '==', date).get();
+        snap.forEach(d => batch.delete(d.ref));
         await batch.commit();
         alert("Day Finalized."); location.reload();
     }
 
     async function handleAuth() {
-        if(auth.currentUser) { auth.signOut(); } 
+        if(auth.currentUser) auth.signOut();
         else {
-            const email = prompt("Admin Email:"), pass = prompt("Password:");
+            const email = prompt("Email:"), pass = prompt("Password:");
             if(email && pass) await auth.signInWithEmailAndPassword(email, pass).catch(err => alert(err.message));
         }
     }
