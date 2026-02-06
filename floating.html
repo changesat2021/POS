@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Bean & Bloom POS - V3 (Admin Secured)</title>
+<title>Bean & Bloom POS - Staff Incentive</title>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 
 <style>
-    :root { --primary: #6F4E37; --food: #d35400; --accent: #2c3e50; --white: #fff; --radius: 10px; --incentive: #2980b9; --gold: #f1c40f; }
+    :root { --primary: #6F4E37; --food: #d35400; --accent: #2c3e50; --white: #fff; --radius: 10px; --incentive: #2980b9; --gold: #f1c40f; --danger: #c0392b; }
     body { margin: 0; font-family: sans-serif; background: #f4f4f4; padding-bottom: 80px; }
     .container { max-width: 650px; margin: 0 auto; padding: 15px; }
     
@@ -20,6 +20,19 @@
     .val { font-size: 1.1rem; font-weight: 800; display: block; }
     .lbl { font-size: 0.7rem; color: #888; text-transform: uppercase; font-weight:bold; }
     
+    /* ADMIN INPUT BOX STYLE */
+    .admin-box { grid-column: span 2; background: #fff0f0; border: 2px dashed red; padding: 10px; border-radius: var(--radius); display: none; }
+    .admin-box h4 { margin: 0 0 10px 0; color: #c0392b; font-size: 0.9rem; text-transform: uppercase; }
+    .admin-input-row { display: flex; justify-content: space-around; gap: 10px; }
+    .admin-input-grp { display: flex; flex-direction: column; align-items: center; }
+    .admin-input-grp label { font-size: 0.7rem; font-weight: bold; margin-bottom: 3px; color: #333; }
+    .admin-input-grp input[type="number"] { padding: 8px; border: 1px solid #ccc; border-radius: 5px; width: 80px; text-align: center; font-weight: bold; font-size: 1.1rem; }
+
+    /* CHECKBOX TOGGLES */
+    .chk-container { display:flex; gap:15px; justify-content:center; margin-top:10px; background:#fff; padding:10px; border-radius:5px; }
+    .chk-lbl { display:flex; align-items:center; gap:5px; font-size:0.8rem; font-weight:bold; color:#333; cursor:pointer;}
+    .chk-lbl input { width:18px; height:18px; accent-color: red; }
+
     .section-header { background-color: #fff; color: var(--primary); padding: 12px 5px; width: 100%; text-align: left; font-size: 1.1rem; font-weight: bold; border-bottom: 2px solid #ddd; margin-top: 20px; display:block; }
     .section-content { display: block; margin-bottom: 10px; }
 
@@ -46,8 +59,6 @@
     .inv-table th { background: #eee; font-size: 0.75rem; }
     .inv-table td { font-size: 0.8rem; }
     .stock-curr { font-weight: bold; color: var(--accent); }
-    
-    /* Edit Link Style for Special Inventory */
     .admin-edit-link { color: blue; text-decoration: underline; cursor: pointer; background: #eef; padding: 2px 5px; border-radius: 3px; }
 
     .print-only { display: none; }
@@ -66,6 +77,10 @@
     .btn-payout { background: var(--accent); color: white; border: none; padding: 12px 25px; border-radius: 5px; font-weight: bold; cursor: pointer; }
     .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; z-index: 100; }
     .modal-content { background:white; padding:20px; border-radius:15px; text-align:center; }
+    
+    .staff-loss-row { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0; }
+    .staff-name { font-weight:bold; color: #333; }
+    .staff-val { font-weight:bold; color: red; }
 </style>
 </head>
 <body>
@@ -82,6 +97,32 @@
     </header>
 
     <div class="dashboard">
+        <div id="admin-manual-control" class="admin-box no-print">
+            <h4>Admin: Night Settings</h4>
+            <div class="admin-input-row">
+                <div class="admin-input-grp">
+                    <label>Night Food</label>
+                    <input type="number" id="manual-night-food" value="0">
+                </div>
+                <div class="admin-input-grp">
+                    <label>Night Buna</label>
+                    <input type="number" id="manual-night-buna" value="0">
+                </div>
+            </div>
+
+            <div style="margin-top:10px; font-size:0.75rem; text-align:center; font-weight:bold; color:#c0392b;">WHO WAS UNAVAILABLE (ABSENT)?</div>
+            <div class="chk-container">
+                <label class="chk-lbl">
+                    <input type="checkbox" id="absent-amelewerk"> Amelewerk
+                </label>
+                <label class="chk-lbl">
+                    <input type="checkbox" id="absent-frehiwot"> Frehiwot
+                </label>
+            </div>
+            
+            <button onclick="saveNightStats()" style="width:100%; margin-top:10px; padding:8px; background:#c0392b; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">SAVE CHANGES</button>
+        </div>
+
         <div class="card"><span class="lbl">የተሸጠው ብር</span><span class="val" id="total-s" style="color:green">0</span></div>
         <div class="card"><span class="lbl">ወጭወች</span><span class="val" id="total-e" style="color:red">0</span></div>
         <div class="card" style="background:var(--accent); color:white"><span class="lbl" style="color:#aaa">ከወጭ ቀሪ</span><span class="val" id="total-n">0</span></div>
@@ -95,11 +136,24 @@
         <div class="card" style="border: 1px dashed var(--incentive); background: #fdfdfd;">
             <span class="lbl" style="color:var(--incentive);">የቀኑ የሰራተኛ ጉርሻ</span>
             <span class="val" id="daily-incentive" style="color:var(--incentive);">0.00</span>
-            <div style="font-size:0.65rem; color:#666;">F>25: <b id="d-inc-food">0</b> | B>45: <b id="d-inc-buna">0</b></div>
+            <div style="font-size:0.65rem; color:#666;">Norm: <b id="d-inc-norm">0</b> | Night: <b id="d-inc-night">0</b></div>
         </div>
         <div class="card" style="border: 2px solid var(--incentive); background: #ebf5fb;">
             <span class="lbl" style="color:var(--incentive);">ወርሃዊ የሰራተኛ ጉርሻ</span>
             <span class="val" id="month-incentive" style="color:var(--incentive); font-size:1.4rem;">0.00</span>
+        </div>
+
+        <div class="card" style="grid-column: span 2; border: 1px solid red; background: #fff5f5;">
+            <span class="lbl" style="color:red; margin-bottom:5px;">Waiter Night Balance (Loss)</span>
+            <div class="staff-loss-row">
+                <span class="staff-name">Amelewerk</span>
+                <span class="staff-val" id="bal-ame">0.00</span>
+            </div>
+            <div class="staff-loss-row" style="border:none;">
+                <span class="staff-name">Frehiwot</span>
+                <span class="staff-val" id="bal-fre">0.00</span>
+            </div>
+            <div style="font-size:0.6rem; color:#666; margin-top:5px;">* Amount lost due to unavailability (Monthly)</div>
         </div>
     </div>
 
@@ -236,12 +290,16 @@
         'እንቁላል በስጋ': [{ i: 'የጥብስ ስጋ', q: 1/10 }, { i: 'እንቁላል', q: 2 }], 'እንቁላል ሳንድዊች': [{ i: 'እንቁላል', q: 2 }],
         'እንቁላል ፍርፍር': [{ i: 'እንቁላል', q: 2 }], 'እንቁላል ቅቅል': [{ i: 'እንቁላል', q: 1 }],
         'ቋንጣ ፍርፍር': [{ i: 'የቋንጣ ስጋ', q: 1/6 }], 'ጥብስ': [{ i: 'የጥብስ ስጋ', q: 1/7 }],
-        // UPDATED LINE BELOW: Added "እንቁላል" deduction
-        'ጥብስ ፍርፍር': [{ i: 'የጥብስ ስጋ', q: 1/7 }, { i: 'እንቁላል', q: 1 }], 
-        'ስጋ ፍርፍር': [{ i: 'የጥብስ ስጋ', q: 1/10 }]
+        'ጥብስ ፍርፍር': [{ i: 'የጥብስ ስጋ', q: 1/7 }], 'ስጋ ፍርፍር': [{ i: 'የጥብስ ስጋ', q: 1/10 }]
     };
 
-    let sel = null, isAdmin = false, dailyListener = null, monthlyListener = null, stockState = {};
+    let sel = null, isAdmin = false, dailyListener = null, monthlyListener = null, adjustmentListener = null, stockState = {};
+    
+    // GLOBAL STATE VARIABLES
+    let manualStats = { f: 0, b: 0, abs_a: false, abs_f: false }; 
+    let dailyTotals = { f: 0, b: 0 }; 
+    let monthAdjustments = {};
+    let monthlySnap = null;
 
     window.onload = () => {
         document.getElementById('work-date').value = new Date().toISOString().split('T')[0];
@@ -249,11 +307,12 @@
         setupAccordions(); renderMenu(); renderRestockInputs();
         auth.onAuthStateChanged(user => {
             isAdmin = (user && user.uid === adminUID);
+            
+            // Toggle Admin Views
             document.getElementById('admin-month-card').style.display = isAdmin ? 'block' : 'none';
+            document.getElementById('admin-manual-control').style.display = isAdmin ? 'grid' : 'none'; 
             document.getElementById('auth-btn').innerText = isAdmin ? "Logout Admin" : "Admin Login";
             document.getElementById('print-btn').style.display = isAdmin ? 'block' : 'none';
-            
-            // ADMIN ONLY SECTIONS VISIBILITY
             document.getElementById('admin-stock-wrapper').style.display = isAdmin ? 'block' : 'none';
             document.getElementById('restock-log-container').style.display = isAdmin ? 'block' : 'none';
             
@@ -318,9 +377,125 @@
         document.getElementById('rev-name').value = ''; document.getElementById('rev-amt').value = '';
     }
 
+    // --- ADMIN MANUAL INPUT SAVER ---
+    async function saveNightStats() {
+        const date = document.getElementById('work-date').value;
+        const f = parseInt(document.getElementById('manual-night-food').value) || 0;
+        const b = parseInt(document.getElementById('manual-night-buna').value) || 0;
+        
+        // Get Checkbox States
+        const abs_a = document.getElementById('absent-amelewerk').checked;
+        const abs_f = document.getElementById('absent-frehiwot').checked;
+        
+        await db.collection('adjustments').doc(date).set({ 
+            f: f, 
+            b: b,
+            abs_a: abs_a,
+            abs_f: abs_f
+        }, { merge: true });
+        alert("Night Stats & Attendance Saved!");
+    }
+
+    // --- INCENTIVE CALCULATION LOGIC ---
+    function updateDailyIncentive() {
+        // 1. Get Manual Night Counts
+        let n_food_qty = manualStats.f || 0;
+        let n_buna_qty = manualStats.b || 0;
+
+        // 2. Calculate Normal (Day) Counts from GLOBAL Daily Totals
+        let norm_food_qty = dailyTotals.f - n_food_qty;
+        let norm_buna_qty = dailyTotals.b - n_buna_qty;
+        if(norm_food_qty < 0) norm_food_qty = 0; 
+        if(norm_buna_qty < 0) norm_buna_qty = 0;
+
+        // 3. Calculate Normal Incentive (Threshold Rule)
+        let inc_norm = 0;
+        if (norm_food_qty > 25 && norm_buna_qty > 45) {
+            inc_norm = ((norm_food_qty - 25) * 7.3) + ((norm_buna_qty - 45) * 4.1);
+        }
+
+        // 4. Calculate Night/Special Incentive (Fixed Rate)
+        let inc_night = (n_food_qty * 25) + (n_buna_qty * 10);
+
+        let finalDailyInc = inc_norm + inc_night;
+
+        document.getElementById('daily-incentive').innerText = finalDailyInc.toFixed(2);
+        document.getElementById('d-inc-norm').innerText = inc_norm.toFixed(1);
+        document.getElementById('d-inc-night').innerText = inc_night.toFixed(1);
+    }
+
+    function updateMonthlyIncentive() {
+        if(!monthlySnap) return;
+
+        let mNet = 0, dStats = {};
+        
+        monthlySnap.forEach(doc => {
+            const t = doc.data(); if(t.type === 'restock') return;
+            if(t.ex) mNet -= t.p; else mNet += t.p;
+            
+            if(!t.ex) {
+                if(!dStats[t.d]) dStats[t.d] = { total_f:0, total_b:0 };
+                if(FOOD_SET.has(t.n)) dStats[t.d].total_f += t.q;
+                if(t.n === 'ቡና') dStats[t.d].total_b += t.q;
+            }
+        });
+
+        let mInc = 0;
+        let amelewerk_loss = 0;
+        let frehiwot_loss = 0;
+
+        // Loop through days calculated from transactions
+        // Note: We iterate through monthAdjustments keys to capture days even if sales were 0 but manually adjusted
+        const allDays = new Set([...Object.keys(dStats), ...Object.keys(monthAdjustments)]);
+
+        allDays.forEach(dayKey => {
+            const day = dStats[dayKey] || { total_f:0, total_b:0 };
+            
+            // Get manual stats for this day (checks global cache first)
+            const adj = monthAdjustments[dayKey] || { f:0, b:0, abs_a:false, abs_f:false };
+            
+            let n_f = adj.f || 0;
+            let n_b = adj.b || 0;
+            
+            let norm_f = day.total_f - n_f;
+            let norm_b = day.total_b - n_b;
+            if(norm_f < 0) norm_f = 0;
+            if(norm_b < 0) norm_b = 0;
+
+            // --- GENERAL INCENTIVE CALC ---
+            
+            // Night Total for this day
+            let nightTotal = (n_f * 25) + (n_b * 10);
+            
+            // Rule 1: Fixed Pay (Night)
+            mInc += nightTotal;
+
+            // Rule 2: Normal Pay (Threshold)
+            if(norm_f > 25 && norm_b > 45) {
+                mInc += ((norm_f - 25) * 7.3) + ((norm_b - 45) * 4.1);
+            }
+
+            // --- INDIVIDUAL LOSS CALCULATION ---
+            // If they are 2 people, they split the night incentive. 
+            // Loss = (NightTotal / 2) if absent.
+            let share = nightTotal / 2;
+            
+            if(adj.abs_a) amelewerk_loss -= share;
+            if(adj.abs_f) frehiwot_loss -= share;
+        });
+
+        document.getElementById('month-n').innerText = mNet.toLocaleString() + " ETB";
+        document.getElementById('month-incentive').innerText = mInc.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) + " ETB";
+        
+        // Update Staff Balance
+        document.getElementById('bal-ame').innerText = amelewerk_loss.toFixed(2);
+        document.getElementById('bal-fre').innerText = frehiwot_loss.toFixed(2);
+    }
+
     async function sync() {
         const date = document.getElementById('work-date').value;
         if(dailyListener) dailyListener();
+        if(adjustmentListener) adjustmentListener();
         if(monthlyListener) monthlyListener();
 
         stockState = {}; INVENTORY_ITEMS.forEach(i => stockState[i] = { yest: 0, added: 0, used: 0 });
@@ -330,11 +505,39 @@
         const yestSnap = await db.collection('inventory').where('d', '==', yestStr).get();
         yestSnap.forEach(doc => { const d = doc.data(); if(stockState[d.n]) stockState[d.n].yest = parseFloat(d.left); });
 
-        dailyListener = db.collection('transactions').where('d', '==', date).onSnapshot(snap => {
-            let s=0, e=0, foodPlates=0, bunaQty=0, html='';
-            let reportMap = {};
-            let restockMap = {}; 
+        // LISTENER 1: MANUAL ADJUSTMENTS
+        adjustmentListener = db.collection('adjustments').doc(date).onSnapshot(doc => {
+            if (doc.exists) {
+                manualStats = doc.data();
+                document.getElementById('manual-night-food').value = manualStats.f || 0;
+                document.getElementById('manual-night-buna').value = manualStats.b || 0;
+                document.getElementById('absent-amelewerk').checked = manualStats.abs_a || false;
+                document.getElementById('absent-frehiwot').checked = manualStats.abs_f || false;
+            } else {
+                manualStats = { f: 0, b: 0, abs_a: false, abs_f: false };
+                document.getElementById('manual-night-food').value = 0;
+                document.getElementById('manual-night-buna').value = 0;
+                document.getElementById('absent-amelewerk').checked = false;
+                document.getElementById('absent-frehiwot').checked = false;
+            }
+            
+            // UPDATE: Keep monthly cache in sync for today so monthly recalculation works instantly
+            monthAdjustments[date] = manualStats;
 
+            // RECALCULATE IMMEDIATELY when adjustment changes
+            updateDailyIncentive();
+            updateMonthlyIncentive();
+        });
+
+        // LISTENER 2: TRANSACTIONS
+        dailyListener = db.collection('transactions').where('d', '==', date).onSnapshot(snap => {
+            let s=0, e=0, totalPlates=0;
+            
+            // Reset Global Totals
+            dailyTotals.f = 0; 
+            dailyTotals.b = 0;
+            
+            let html='', reportMap = {}, restockMap = {};
             INVENTORY_ITEMS.forEach(i => { stockState[i].added = 0; stockState[i].used = 0; });
 
             snap.forEach(doc => {
@@ -342,8 +545,17 @@
                 if(t.type !== 'restock') {
                     if(t.ex) e += t.p; else s += t.p;
                     if (!t.ex) {
-                        if (FOOD_SET.has(t.n)) foodPlates += t.q;
-                        if (t.n === 'ቡና') bunaQty += t.q;
+                        const isFood = FOOD_SET.has(t.n);
+                        const isBuna = (t.n === 'ቡና');
+                        
+                        if (isFood) {
+                            totalPlates += t.q;
+                            dailyTotals.f += t.q; // Update Global
+                        }
+                        if (isBuna) {
+                            dailyTotals.b += t.q; // Update Global
+                        }
+
                         if(RECIPES[t.n]) {
                             RECIPES[t.n].forEach(instruction => { if(stockState[instruction.i]) stockState[instruction.i].used += (instruction.q * t.q); });
                         }
@@ -358,7 +570,6 @@
                     const color = t.ex ? 'red' : (t.n.startsWith('IN:') ? 'green' : 'black');
                     if(!reportMap[t.n]) {
                         const isMenu = MENU.some(m => m.n === t.n);
-                        // Identify if it's an expense or custom income
                         const isExpense = t.ex; 
                         reportMap[t.n] = { q:0, p:0, c: color, isMenu: isMenu, isExpense: isExpense };
                     }
@@ -367,172 +578,84 @@
                 }
             });
 
-            // Render Sales Report with Enhanced Edit Logic (Delete added for Income/Expense)
+            // Render Report
             Object.keys(reportMap).sort().forEach(itemName => {
                 const item = reportMap[itemName];
                 let actions = '';
-                
                 if (isAdmin) {
-                    // Edit Button (For All)
                     actions += `<button onclick="adjustItemTotal('${itemName}', ${item.q}, ${item.p}, ${item.isMenu}, ${item.isExpense})" style="padding:2px 8px; cursor:pointer; margin-right:5px;">✏️</button>`;
-                    
-                    // Delete Button (ONLY for Custom Income/Expenses, not Menu items)
-                    if (!item.isMenu) {
-                         actions += `<button onclick="deleteTransaction('${itemName}')" style="padding:2px 8px; cursor:pointer; color:red; border:1px solid red; background:#fff;">❌</button>`;
-                    }
+                    if (!item.isMenu) actions += `<button onclick="deleteTransaction('${itemName}')" style="padding:2px 8px; cursor:pointer; color:red; border:1px solid red; background:#fff;">❌</button>`;
                 }
-
                 html += `<tr><td style="color:${item.c};">${itemName}</td><td>${item.q}</td><td>${item.p}</td><td class="no-print" style="white-space:nowrap;">${actions}</td></tr>`;
             });
             document.getElementById('log-body').innerHTML = html;
 
-            // Render Restock Log (Admin)
             let restockHtml = '';
             Object.keys(restockMap).sort().forEach(itemName => {
                 let qty = restockMap[itemName];
-                if (Math.abs(qty) > 0.001) {
-                    restockHtml += `<tr><td>${itemName}</td><td>${qty.toFixed(2)}</td><td><button onclick="adjustRestockTotal('${itemName}', ${qty})" style="padding:2px 8px; cursor:pointer;">✏️ Edit</button></td></tr>`;
-                }
+                if (Math.abs(qty) > 0.001) restockHtml += `<tr><td>${itemName}</td><td>${qty.toFixed(2)}</td><td><button onclick="adjustRestockTotal('${itemName}', ${qty})" style="padding:2px 8px; cursor:pointer;">✏️ Edit</button></td></tr>`;
             });
             document.getElementById('restock-log-body').innerHTML = restockHtml;
-
 
             document.getElementById('total-s').innerText = s;
             document.getElementById('total-e').innerText = e;
             document.getElementById('total-n').innerText = (s - e) + " ETB";
-            document.getElementById('total-plates').innerText = foodPlates;
+            document.getElementById('total-plates').innerText = totalPlates;
 
-            let dailyFoodInc = 0; if(foodPlates > 25) dailyFoodInc = (foodPlates - 25) * 7.3;
-            let dailyBunaInc = 0; if(bunaQty > 45) dailyBunaInc = (bunaQty - 45) * 4.1;
-            document.getElementById('daily-incentive').innerText = (dailyFoodInc + dailyBunaInc).toFixed(2);
-            document.getElementById('d-inc-food').innerText = dailyFoodInc.toFixed(1);
-            document.getElementById('d-inc-buna').innerText = dailyBunaInc.toFixed(1);
+            // Update UI Incentive
+            updateDailyIncentive();
+            
             renderInventoryTable();
         });
 
+        // --- MONTHLY AGGREGATION ---
         const year = date.split('-')[0], month = date.split('-')[1];
+        
+        // Fetch all adjustments for this month once
+        const adjSnap = await db.collection('adjustments').where(firebase.firestore.FieldPath.documentId(), '>=', `${year}-${month}-01`).where(firebase.firestore.FieldPath.documentId(), '<=', date).get();
+        monthAdjustments = {}; // Reset global
+        adjSnap.forEach(doc => { monthAdjustments[doc.id] = doc.data(); });
+
         monthlyListener = db.collection('transactions').where('d', '>=', `${year}-${month}-01`).where('d', '<=', date).onSnapshot(snap => {
-            let mNet = 0, dStats = {};
-            snap.forEach(doc => {
-                const t = doc.data(); if(t.type === 'restock') return;
-                if(t.ex) mNet -= t.p; else mNet += t.p;
-                if(!t.ex) {
-                    if(!dStats[t.d]) dStats[t.d] = { f:0, b:0 };
-                    if(FOOD_SET.has(t.n)) dStats[t.d].f += t.q;
-                    if(t.n === 'ቡና') dStats[t.d].b += t.q;
-                }
-            });
-            let mInc = 0;
-            for(let k in dStats) {
-                if(dStats[k].f > 25) mInc += (dStats[k].f - 25)*7.3;
-                if(dStats[k].b > 45) mInc += (dStats[k].b - 45)*4.1;
-            }
-            document.getElementById('month-n').innerText = mNet.toLocaleString() + " ETB";
-            document.getElementById('month-incentive').innerText = mInc.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) + " ETB";
+            monthlySnap = snap; // Save snapshot globally so adjustmentListener can use it
+            updateMonthlyIncentive();
         });
     }
 
-    // --- NEW: DELETE FUNCTION FOR INCOME/EXPENSE ---
     async function deleteTransaction(itemName) {
-        if(!confirm(`Are you sure you want to DELETE all entries for: ${itemName}?`)) return;
-        
+        if(!confirm(`Delete all entries for: ${itemName}?`)) return;
         const date = document.getElementById('work-date').value;
-        const snapshot = await db.collection('transactions')
-            .where('d', '==', date)
-            .where('n', '==', itemName)
-            .get();
-            
-        const batch = db.batch();
-        snapshot.forEach(doc => batch.delete(doc.ref));
-        await batch.commit();
+        const snapshot = await db.collection('transactions').where('d', '==', date).where('n', '==', itemName).get();
+        const batch = db.batch(); snapshot.forEach(doc => batch.delete(doc.ref)); await batch.commit();
     }
 
-    // --- SALES / EXPENSE / INCOME EDIT LOGIC ---
     async function adjustItemTotal(itemName, currentQty, currentTotal, isMenu, isExpense) {
         if (isMenu) {
-            // Logic for Menu Items: Edit Quantity (Count)
-            let newQty = prompt(`Correction for ${itemName} (Menu Item):\nChange current Quantity (${currentQty}) to:`, currentQty);
-            if (newQty === null) return;
-            newQty = parseInt(newQty);
-            if (isNaN(newQty)) return alert("Enter a number.");
-            if (newQty === currentQty) return;
-
-            const diff = newQty - currentQty;
+            let newQty = prompt(`Change Qty for ${itemName} (curr: ${currentQty}):`, currentQty);
+            if (newQty === null) return; newQty = parseInt(newQty); if (isNaN(newQty)) return;
+            const diff = newQty - currentQty; if(diff === 0) return;
             const menuObj = MENU.find(m => m.n === itemName);
-            const unitPrice = menuObj ? menuObj.p : 0;
-
-            await db.collection('transactions').add({
-                n: itemName, q: diff, p: diff * unitPrice,
-                d: document.getElementById('work-date').value,
-                ex: false, ts: Date.now(), note: 'Admin Edit'
-            });
-
+            await db.collection('transactions').add({ n: itemName, q: diff, p: diff * (menuObj ? menuObj.p : 0), d: document.getElementById('work-date').value, ex: false, ts: Date.now() });
         } else {
-            // Logic for Income/Expenses: Edit Amount (Money)
-            // User usually wants to fix the price, not the arbitrary quantity count
-            let newTotal = prompt(`Correction for ${itemName} (Income/Expense):\nChange Total Amount (${currentTotal}) to:`, currentTotal);
-            if (newTotal === null) return;
-            newTotal = parseFloat(newTotal);
-            if (isNaN(newTotal)) return alert("Enter a valid amount.");
-            
-            const diff = newTotal - currentTotal;
-            if (Math.abs(diff) < 0.01) return;
-
-            // We record the difference in price. 
-            // We set Qty to 0 so we don't mess up the "count" of transactions in the report list too much, just the value.
-            await db.collection('transactions').add({
-                n: itemName, 
-                q: 0, 
-                p: diff, 
-                d: document.getElementById('work-date').value,
-                ex: isExpense, // Preserve whether it was an expense or income
-                ts: Date.now(), 
-                note: 'Admin Amount Correction'
-            });
+            let newTotal = prompt(`Change Total for ${itemName} (curr: ${currentTotal}):`, currentTotal);
+            if (newTotal === null) return; newTotal = parseFloat(newTotal); if (isNaN(newTotal)) return;
+            const diff = newTotal - currentTotal; if (Math.abs(diff) < 0.01) return;
+            await db.collection('transactions').add({ n: itemName, q: 0, p: diff, d: document.getElementById('work-date').value, ex: isExpense, ts: Date.now() });
         }
     }
 
-    // --- RESTOCK EDIT LOGIC ---
     async function adjustRestockTotal(itemName, currentQty) {
-        let newQty = prompt(`RESTOCK Correction for ${itemName}:\nChange Total Added (${currentQty}) to:`, currentQty);
-        if (newQty === null) return;
-        newQty = parseFloat(newQty);
-        if (isNaN(newQty)) return alert("Enter a number.");
-        if (Math.abs(newQty - currentQty) < 0.001) return;
-
-        const diff = newQty - currentQty;
-        await db.collection('transactions').add({ 
-            n: `Restock Adj: ${itemName}`, 
-            q: diff, 
-            p: 0, 
-            d: document.getElementById('work-date').value, 
-            ex: false, 
-            type: 'restock', 
-            itemRef: itemName, 
-            ts: Date.now() 
-        });
+        let newQty = prompt(`Change RESTOCK for ${itemName} (curr: ${currentQty}):`, currentQty);
+        if (newQty === null) return; newQty = parseFloat(newQty); if (isNaN(newQty)) return;
+        const diff = newQty - currentQty; if (Math.abs(diff) < 0.001) return;
+        await db.collection('transactions').add({ n: `Restock Adj: ${itemName}`, q: diff, p: 0, d: document.getElementById('work-date').value, ex: false, type: 'restock', itemRef: itemName, ts: Date.now() });
     }
 
-    // --- LIVE INVENTORY OVERRIDE LOGIC ---
     async function adjustLiveInventory(itemName, currentCalculated) {
-        let actualLeft = prompt(`MANUAL COUNT for ${itemName}:\nSystem says: ${currentCalculated}\nWhat is the ACTUAL physical count?`);
-        if(actualLeft === null) return;
-        actualLeft = parseFloat(actualLeft);
-        if(isNaN(actualLeft)) return alert("Enter a valid number");
-        
-        const diff = actualLeft - currentCalculated; 
-        if(Math.abs(diff) < 0.01) return;
-        
-        await db.collection('transactions').add({ 
-            n: `Manual Count Adj: ${itemName}`, 
-            q: diff, 
-            p: 0, 
-            d: document.getElementById('work-date').value, 
-            ex: false, 
-            type: 'restock', 
-            itemRef: itemName, 
-            ts: Date.now() 
-        });
+        let actualLeft = prompt(`MANUAL COUNT for ${itemName}:\nSystem says: ${currentCalculated}\nActual count?`);
+        if(actualLeft === null) return; actualLeft = parseFloat(actualLeft); if(isNaN(actualLeft)) return;
+        const diff = actualLeft - currentCalculated; if(Math.abs(diff) < 0.01) return;
+        await db.collection('transactions').add({ n: `Manual Count Adj: ${itemName}`, q: diff, p: 0, d: document.getElementById('work-date').value, ex: false, type: 'restock', itemRef: itemName, ts: Date.now() });
     }
 
     function renderInventoryTable() {
@@ -540,12 +663,8 @@
         INVENTORY_ITEMS.forEach(name => {
             const i = stockState[name];
             const current = (i.yest + i.added - i.used);
-            
             let leftDisplay = current.toFixed(2);
-            if (isAdmin && MANUAL_LINK_ITEMS.includes(name)) {
-                leftDisplay = `<span class="admin-edit-link" onclick="adjustLiveInventory('${name}', ${current})">${current.toFixed(2)}</span>`;
-            }
-
+            if (isAdmin && MANUAL_LINK_ITEMS.includes(name)) leftDisplay = `<span class="admin-edit-link" onclick="adjustLiveInventory('${name}', ${current})">${current.toFixed(2)}</span>`;
             html += `<tr><td>${name}</td><td>${i.yest}</td><td style="color:green;">+${i.added}</td><td style="color:red;">-${i.used.toFixed(2)}</td><td class="stock-curr">${leftDisplay}</td></tr>`;
             printHtml += `<tr><td>${name}</td><td>${(i.yest + i.added).toFixed(2)}</td><td>${i.used.toFixed(2)}</td><td>${current.toFixed(2)}</td></tr>`;
         });
@@ -556,7 +675,7 @@
     function initiateFinalize() {
         document.getElementById('pdf-date').innerText = "DATE: " + document.getElementById('work-date').value;
         window.print();
-        setTimeout(() => { if(confirm("Report Saved? Proceeding will clear today's transactions and save stock levels.")) finalizeDay(); }, 1500);
+        setTimeout(() => { if(confirm("Save stock and clear today?")) finalizeDay(); }, 1500);
     }
 
     async function finalizeDay() {
@@ -564,22 +683,15 @@
         const batch = db.batch();
         INVENTORY_ITEMS.forEach(name => {
             const i = stockState[name];
-            const left = (i.yest + i.added - i.used);
-            const docRef = db.collection('inventory').doc(`${date}_${name.replace(/\s/g,'')}`);
-            batch.set(docRef, { n: name, left: left, d: date, ts: Date.now() });
+            batch.set(db.collection('inventory').doc(`${date}_${name.replace(/\s/g,'')}`), { n: name, left: (i.yest + i.added - i.used), d: date, ts: Date.now() });
         });
-        const tSnap = await db.collection('transactions').where('d', '==', date).get();
-        tSnap.forEach(d => batch.delete(d.ref));
-        await batch.commit();
-        alert("Day Finalized."); location.reload();
+        const tSnap = await db.collection('transactions').where('d', '==', date).get(); tSnap.forEach(d => batch.delete(d.ref));
+        await batch.commit(); alert("Day Finalized."); location.reload();
     }
 
     async function handleAuth() {
         if(auth.currentUser) { auth.signOut(); } 
-        else {
-            const email = prompt("Admin Email:"), pass = prompt("Password:");
-            if(email && pass) await auth.signInWithEmailAndPassword(email, pass).catch(err => alert(err.message));
-        }
+        else { const email = prompt("Admin Email:"), pass = prompt("Password:"); if(email && pass) await auth.signInWithEmailAndPassword(email, pass).catch(err => alert(err.message)); }
     }
     function closeModal() { document.getElementById('qty-modal').style.display='none'; document.getElementById('m-qty').value = 1; }
 </script>
