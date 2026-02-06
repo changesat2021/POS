@@ -101,7 +101,7 @@
                 </div>
             </div>
             
-            <button onclick="saveNightStats(); alert('Night Stats Saved!');" style="width:100%; margin-top:10px; padding:8px; background:#c0392b; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">SAVE CHANGES</button>
+            <button onclick="saveNightStats()" style="width:100%; margin-top:10px; padding:8px; background:#c0392b; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">SAVE CHANGES</button>
 
             <div style="font-size:0.6rem; margin-top:5px; color:#555;">
                 * These items get fixed pay (25/10) and are removed from Normal Incentive.
@@ -265,7 +265,12 @@
     };
 
     let sel = null, isAdmin = false, dailyListener = null, monthlyListener = null, adjustmentListener = null, stockState = {};
-    let manualStats = { f: 0, b: 0 }; // Holds current day manual "Night" stats
+    
+    // GLOBAL STATE VARIABLES (Added to ensure listeners talk to each other)
+    let manualStats = { f: 0, b: 0 }; 
+    let dailyTotals = { f: 0, b: 0 }; 
+    let monthAdjustments = {};
+    let monthlySnap = null;
 
     window.onload = () => {
         document.getElementById('work-date').value = new Date().toISOString().split('T')[0];
@@ -276,7 +281,7 @@
             
             // Toggle Admin Views
             document.getElementById('admin-month-card').style.display = isAdmin ? 'block' : 'none';
-            document.getElementById('admin-manual-control').style.display = isAdmin ? 'grid' : 'none'; // SHOW BOX IF ADMIN
+            document.getElementById('admin-manual-control').style.display = isAdmin ? 'grid' : 'none'; 
             document.getElementById('auth-btn').innerText = isAdmin ? "Logout Admin" : "Admin Login";
             document.getElementById('print-btn').style.display = isAdmin ? 'block' : 'none';
             document.getElementById('admin-stock-wrapper').style.display = isAdmin ? 'block' : 'none';
@@ -349,8 +354,80 @@
         const f = parseInt(document.getElementById('manual-night-food').value) || 0;
         const b = parseInt(document.getElementById('manual-night-buna').value) || 0;
         
-        // Save to a separate collection 'adjustments' to persist manual data
         await db.collection('adjustments').doc(date).set({ f: f, b: b }, { merge: true });
+        alert("Night Stats Saved! Incentives updated.");
+    }
+
+    // --- REUSABLE INCENTIVE CALCULATION LOGIC ---
+    function updateDailyIncentive() {
+        // 1. Get Manual Night Counts
+        let n_food_qty = manualStats.f || 0;
+        let n_buna_qty = manualStats.b || 0;
+
+        // 2. Calculate Normal (Day) Counts from GLOBAL Daily Totals
+        let norm_food_qty = dailyTotals.f - n_food_qty;
+        let norm_buna_qty = dailyTotals.b - n_buna_qty;
+        if(norm_food_qty < 0) norm_food_qty = 0; 
+        if(norm_buna_qty < 0) norm_buna_qty = 0;
+
+        // 3. Calculate Normal Incentive (Threshold Rule)
+        let inc_norm = 0;
+        if (norm_food_qty > 25 && norm_buna_qty > 45) {
+            inc_norm = ((norm_food_qty - 25) * 7.3) + ((norm_buna_qty - 45) * 4.1);
+        }
+
+        // 4. Calculate Night/Special Incentive (Fixed Rate)
+        let inc_night = (n_food_qty * 25) + (n_buna_qty * 10);
+
+        let finalDailyInc = inc_norm + inc_night;
+
+        document.getElementById('daily-incentive').innerText = finalDailyInc.toFixed(2);
+        document.getElementById('d-inc-norm').innerText = inc_norm.toFixed(1);
+        document.getElementById('d-inc-night').innerText = inc_night.toFixed(1);
+    }
+
+    function updateMonthlyIncentive() {
+        if(!monthlySnap) return;
+
+        let mNet = 0, dStats = {};
+        
+        monthlySnap.forEach(doc => {
+            const t = doc.data(); if(t.type === 'restock') return;
+            if(t.ex) mNet -= t.p; else mNet += t.p;
+            
+            if(!t.ex) {
+                if(!dStats[t.d]) dStats[t.d] = { total_f:0, total_b:0 };
+                if(FOOD_SET.has(t.n)) dStats[t.d].total_f += t.q;
+                if(t.n === 'ቡና') dStats[t.d].total_b += t.q;
+            }
+        });
+
+        let mInc = 0;
+        for(let dayKey in dStats) {
+            const day = dStats[dayKey];
+            
+            // Get manual stats for this day (checks global cache first)
+            const adj = monthAdjustments[dayKey] || { f:0, b:0 };
+            
+            let n_f = adj.f || 0;
+            let n_b = adj.b || 0;
+            
+            let norm_f = day.total_f - n_f;
+            let norm_b = day.total_b - n_b;
+            if(norm_f < 0) norm_f = 0;
+            if(norm_b < 0) norm_b = 0;
+
+            // Rule 1: Fixed Pay
+            mInc += (n_f * 25) + (n_b * 10);
+
+            // Rule 2: Normal Pay (Threshold)
+            if(norm_f > 25 && norm_b > 45) {
+                mInc += ((norm_f - 25) * 7.3) + ((norm_b - 45) * 4.1);
+            }
+        }
+
+        document.getElementById('month-n').innerText = mNet.toLocaleString() + " ETB";
+        document.getElementById('month-incentive').innerText = mInc.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) + " ETB";
     }
 
     async function sync() {
@@ -377,15 +454,22 @@
                 document.getElementById('manual-night-food').value = 0;
                 document.getElementById('manual-night-buna').value = 0;
             }
-            // Trigger recalculation if transactions already loaded
-            // (The transaction listener updates frequently anyway, but this ensures sync)
+            
+            // UPDATE: Keep monthly cache in sync for today so monthly recalculation works instantly
+            monthAdjustments[date] = manualStats;
+
+            // RECALCULATE IMMEDIATELY when adjustment changes
+            updateDailyIncentive();
+            updateMonthlyIncentive();
         });
 
         // LISTENER 2: TRANSACTIONS
         dailyListener = db.collection('transactions').where('d', '==', date).onSnapshot(snap => {
             let s=0, e=0, totalPlates=0;
-            // Total Counts from Buttons
-            let total_food = 0, total_buna = 0;
+            
+            // Reset Global Totals
+            dailyTotals.f = 0; 
+            dailyTotals.b = 0;
             
             let html='', reportMap = {}, restockMap = {};
             INVENTORY_ITEMS.forEach(i => { stockState[i].added = 0; stockState[i].used = 0; });
@@ -400,10 +484,10 @@
                         
                         if (isFood) {
                             totalPlates += t.q;
-                            total_food += t.q;
+                            dailyTotals.f += t.q; // Update Global
                         }
                         if (isBuna) {
-                            total_buna += t.q;
+                            dailyTotals.b += t.q; // Update Global
                         }
 
                         if(RECIPES[t.n]) {
@@ -452,85 +536,23 @@
             document.getElementById('total-n').innerText = (s - e) + " ETB";
             document.getElementById('total-plates').innerText = totalPlates;
 
-            // --- INCENTIVE CALCULATION (MANUAL LOGIC) ---
-            
-            // 1. Get Manual Night Counts
-            let n_food_qty = manualStats.f || 0;
-            let n_buna_qty = manualStats.b || 0;
-
-            // 2. Calculate Normal (Day) Counts
-            let norm_food_qty = total_food - n_food_qty;
-            let norm_buna_qty = total_buna - n_buna_qty;
-            if(norm_food_qty < 0) norm_food_qty = 0; // Safety
-            if(norm_buna_qty < 0) norm_buna_qty = 0;
-
-            // 3. Calculate Normal Incentive (Threshold Rule)
-            let inc_norm = 0;
-            // AND Condition: Food > 25 AND Buna > 45
-            if (norm_food_qty > 25 && norm_buna_qty > 45) {
-                inc_norm = ((norm_food_qty - 25) * 7.3) + ((norm_buna_qty - 45) * 4.1);
-            }
-
-            // 4. Calculate Night/Special Incentive (Fixed Rate)
-            let inc_night = (n_food_qty * 25) + (n_buna_qty * 10);
-
-            let finalDailyInc = inc_norm + inc_night;
-
-            document.getElementById('daily-incentive').innerText = finalDailyInc.toFixed(2);
-            document.getElementById('d-inc-norm').innerText = inc_norm.toFixed(1);
-            document.getElementById('d-inc-night').innerText = inc_night.toFixed(1);
+            // Update UI Incentive
+            updateDailyIncentive();
             
             renderInventoryTable();
         });
 
-        // --- MONTHLY AGGREGATION WITH MANUAL ADJUSTMENTS ---
+        // --- MONTHLY AGGREGATION ---
         const year = date.split('-')[0], month = date.split('-')[1];
         
         // Fetch all adjustments for this month once
         const adjSnap = await db.collection('adjustments').where(firebase.firestore.FieldPath.documentId(), '>=', `${year}-${month}-01`).where(firebase.firestore.FieldPath.documentId(), '<=', date).get();
-        let monthAdjustments = {};
+        monthAdjustments = {}; // Reset global
         adjSnap.forEach(doc => { monthAdjustments[doc.id] = doc.data(); });
 
         monthlyListener = db.collection('transactions').where('d', '>=', `${year}-${month}-01`).where('d', '<=', date).onSnapshot(snap => {
-            let mNet = 0, dStats = {};
-            
-            snap.forEach(doc => {
-                const t = doc.data(); if(t.type === 'restock') return;
-                if(t.ex) mNet -= t.p; else mNet += t.p;
-                
-                if(!t.ex) {
-                    if(!dStats[t.d]) dStats[t.d] = { total_f:0, total_b:0 };
-                    if(FOOD_SET.has(t.n)) dStats[t.d].total_f += t.q;
-                    if(t.n === 'ቡና') dStats[t.d].total_b += t.q;
-                }
-            });
-
-            let mInc = 0;
-            for(let dayKey in dStats) {
-                const day = dStats[dayKey];
-                
-                // Get manual stats for this specific day (or 0 if none)
-                const adj = monthAdjustments[dayKey] || { f:0, b:0 };
-                
-                let n_f = adj.f || 0;
-                let n_b = adj.b || 0;
-                
-                let norm_f = day.total_f - n_f;
-                let norm_b = day.total_b - n_b;
-                if(norm_f < 0) norm_f = 0;
-                if(norm_b < 0) norm_b = 0;
-
-                // Rule 1: Fixed Pay
-                mInc += (n_f * 25) + (n_b * 10);
-
-                // Rule 2: Normal Pay (Threshold)
-                if(norm_f > 25 && norm_b > 45) {
-                    mInc += ((norm_f - 25) * 7.3) + ((norm_b - 45) * 4.1);
-                }
-            }
-
-            document.getElementById('month-n').innerText = mNet.toLocaleString() + " ETB";
-            document.getElementById('month-incentive').innerText = mInc.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) + " ETB";
+            monthlySnap = snap; // Save snapshot globally so adjustmentListener can use it
+            updateMonthlyIncentive();
         });
     }
 
