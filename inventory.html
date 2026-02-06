@@ -93,18 +93,20 @@
             <div class="admin-input-row">
                 <div class="admin-input-grp">
                     <label>Night Food Qty</label>
-                    <input type="number" id="manual-night-food" value="0" onchange="saveNightStats()">
+                    <input type="number" id="manual-night-food" value="0">
                 </div>
                 <div class="admin-input-grp">
                     <label>Night Buna Qty</label>
-                    <input type="number" id="manual-night-buna" value="0" onchange="saveNightStats()">
+                    <input type="number" id="manual-night-buna" value="0">
                 </div>
             </div>
+            
+            <button onclick="saveNightStats(); alert('Night Stats Saved!');" style="width:100%; margin-top:10px; padding:8px; background:#c0392b; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">SAVE CHANGES</button>
+
             <div style="font-size:0.6rem; margin-top:5px; color:#555;">
                 * These items get fixed pay (25/10) and are removed from Normal Incentive.
             </div>
         </div>
-
         <div class="card"><span class="lbl">የተሸጠው ብር</span><span class="val" id="total-s" style="color:green">0</span></div>
         <div class="card"><span class="lbl">ወጭወች</span><span class="val" id="total-e" style="color:red">0</span></div>
         <div class="card" style="background:var(--accent); color:white"><span class="lbl" style="color:#aaa">ከወጭ ቀሪ</span><span class="val" id="total-n">0</span></div>
