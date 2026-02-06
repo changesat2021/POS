@@ -316,18 +316,21 @@
         document.getElementById('rev-name').value = ''; document.getElementById('rev-amt').value = '';
     }
 
-    // --- HELPER FOR EAT TIME CHECK ---
+    // --- HELPER FOR EAT TIME CHECK (UTC+3) ---
     function isFixedPayTime(timestamp) {
         if(!timestamp) return false;
         const d = new Date(timestamp);
+        
         // East Africa Time is UTC+3.
-        // 08:30 AM EAT = 05:30 UTC
-        // 06:00 PM EAT = 15:00 UTC
-        // Convert time to minutes from UTC midnight for comparison
-        const mins = (d.getUTCHours() * 60) + d.getUTCMinutes();
-        const startMins = (5 * 60) + 30; // 330 mins
-        const endMins = (15 * 60);       // 900 mins
-        return (mins >= startMins && mins < endMins);
+        let eatHour = d.getUTCHours() + 3;
+        if (eatHour >= 24) eatHour -= 24; // Handle day wrap
+        
+        const eatMinutes = (eatHour * 60) + d.getUTCMinutes();
+        
+        // Window: 08:30 AM to 06:00 PM (EAT)
+        // 08:30 = 8 * 60 + 30 = 510 minutes
+        // 18:00 = 18 * 60 = 1080 minutes
+        return (eatMinutes >= 510 && eatMinutes < 1080);
     }
 
     async function sync() {
@@ -429,6 +432,8 @@
             // 1. Regular Bonus: Only if (Food > 25) AND (Buna > 45) at the same time. Applies to items OUTSIDE the 8:30-6:00 window.
             let calc_reg_inc = 0;
             let d_inc_f = 0, d_inc_b = 0;
+            
+            // Note: STRICT AND condition for the bonus portion
             if(f_bonus > 25 && b_bonus > 45) {
                 d_inc_f = (f_bonus - 25) * 7.3;
                 d_inc_b = (b_bonus - 45) * 4.1;
