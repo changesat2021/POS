@@ -116,7 +116,7 @@
                     <input type="checkbox" id="absent-amelewerk"> Amelewerk
                 </label>
                 <label class="chk-lbl">
-                    <input type="checkbox" id="absent-frehiwot"> Frehiwot
+                    <input type="checkbox" id="absent-muluye"> muluye
                 </label>
             </div>
             
@@ -442,7 +442,7 @@
 
         let mInc = 0;
         let amelewerk_loss = 0;
-        let frehiwot_loss = 0;
+        let muluye_loss = 0;
 
         // Loop through days calculated from transactions
         // Note: We iterate through monthAdjustments keys to capture days even if sales were 0 but manually adjusted
@@ -481,7 +481,7 @@
             let share = nightTotal / 2;
             
             if(adj.abs_a) amelewerk_loss -= share;
-            if(adj.abs_f) frehiwot_loss -= share;
+            if(adj.abs_f) muluye_loss -= share;
         });
 
         document.getElementById('month-n').innerText = mNet.toLocaleString() + " ETB";
